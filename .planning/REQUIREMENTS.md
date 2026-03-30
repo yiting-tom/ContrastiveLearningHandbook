@@ -166,46 +166,46 @@ These methods are either more complex, less commonly cited in tutorials, or have
 
 | Requirement ID | Description | Source | Phase |
 |----------------|-------------|--------|-------|
-| FOUND-01 | BaseSSLModule base class | STACK.md Pattern 1 | TBD |
-| FOUND-02 | Pydantic v2 config schema | STACK.md Config System | TBD |
-| FOUND-03 | timm backbone factory | STACK.md timm Integration | TBD |
-| FOUND-04 | ProjectionHead MLP | METHODS.md Shared Pattern 3 | TBD |
-| FOUND-05 | ContrastiveAugmentation pipeline | METHODS.md Shared Pattern 1 | TBD |
-| FOUND-06 | SSLDataModule | PROJECT.md, EVALUATION.md | TBD |
-| FOUND-07 | Method dispatcher | STACK.md Dispatcher pattern | TBD |
-| FOUND-08 | EvalConfig schema | EVALUATION.md Integration | TBD |
-| FOUND-09 | TensorBoard logging | STACK.md Pattern 1 | TBD |
-| FOUND-10 | EMAUpdater utility | STACK.md Pattern 2; METHODS.md Shared Pattern 5 | TBD |
-| ERA1-01 | Instance Discrimination | METHODS.md Era 1 | TBD |
-| ERA1-02 | Invariant Spread | METHODS.md Era 1 | TBD |
-| ERA2-01 | MoCo v1 | METHODS.md Era 2 | TBD |
-| ERA2-02 | MoCo v2 | METHODS.md Era 2 | TBD |
-| ERA2-03 | SimCLR v1 | METHODS.md Era 2 | TBD |
-| ERA2-04 | SimCLR v2 (pretraining stage) | METHODS.md Era 2 | TBD |
-| ERA2-05 | SwAV | METHODS.md Era 2 | TBD |
-| ERA2-06 | InfoMin (augmentation demo) | METHODS.md Era 2 | TBD |
-| ERA3-01 | BYOL | METHODS.md Era 3 | TBD |
-| ERA3-02 | SimSiam | METHODS.md Era 3 | TBD |
-| ERA3-03 | Barlow Twins | METHODS.md Era 3 | TBD |
-| ERA4-01 | MoCo v3 | METHODS.md Era 4 | TBD |
-| ERA4-02 | DINO | METHODS.md Era 4 | TBD |
-| ERA4-03 | DINOv2 (fine-tuning only) | METHODS.md Era 4 | TBD |
-| SUP-01 | SupCon | METHODS.md Supervised | TBD |
-| INFRA-01 | InfoNCELoss | METHODS.md Shared Pattern 2 | TBD |
-| INFRA-02 | MemoryBank | METHODS.md Shared Pattern 7 | TBD |
-| INFRA-03 | MomentumQueue | METHODS.md Shared Pattern 7 | TBD |
-| INFRA-04 | MultiCropDataset | METHODS.md Shared Pattern 8 | TBD |
-| INFRA-05 | PredictorHead | METHODS.md Shared Pattern 4 | TBD |
-| INFRA-06 | LARS optimizer | METHODS.md (SimCLR, BYOL, SwAV) | TBD |
-| EVAL-01 | k-NN callback | EVALUATION.md k-NN section | TBD |
-| EVAL-02 | Linear probe script | EVALUATION.md Linear Probing | TBD |
-| EVAL-03 | t-SNE visualization | EVALUATION.md t-SNE section | TBD |
-| EVAL-04 | UMAP visualization | EVALUATION.md UMAP section | TBD |
-| EVAL-05 | Fine-tuning script | EVALUATION.md Fine-tuning | TBD |
-| EVAL-06 | CAM visualization | EVALUATION.md CAM section | TBD |
-| DOC-01 | README | PROJECT.md | TBD |
-| DOC-02 | Per-method docstrings | METHODS.md sources | TBD |
-| DOC-03 | Tutorial notebook/guide | PROJECT.md | TBD |
+| FOUND-01 | BaseSSLModule base class | STACK.md Pattern 1 | Phase 1 |
+| FOUND-02 | Pydantic v2 config schema | STACK.md Config System | Phase 1 |
+| FOUND-03 | timm backbone factory | STACK.md timm Integration | Phase 1 |
+| FOUND-04 | ProjectionHead MLP | METHODS.md Shared Pattern 3 | Phase 1 |
+| FOUND-05 | ContrastiveAugmentation pipeline | METHODS.md Shared Pattern 1 | Phase 1 |
+| FOUND-06 | SSLDataModule | PROJECT.md, EVALUATION.md | Phase 1 |
+| FOUND-07 | Method dispatcher | STACK.md Dispatcher pattern | Phase 1 |
+| FOUND-08 | EvalConfig schema | EVALUATION.md Integration | Phase 9 |
+| FOUND-09 | TensorBoard logging | STACK.md Pattern 1 | Phase 1 |
+| FOUND-10 | EMAUpdater utility | STACK.md Pattern 2; METHODS.md Shared Pattern 5 | Phase 1 |
+| ERA1-01 | Instance Discrimination | METHODS.md Era 1 | Phase 2 |
+| ERA1-02 | Invariant Spread | METHODS.md Era 1 | Phase 2 |
+| ERA2-01 | MoCo v1 | METHODS.md Era 2 | Phase 4 |
+| ERA2-02 | MoCo v2 | METHODS.md Era 2 | Phase 4 |
+| ERA2-03 | SimCLR v1 | METHODS.md Era 2 | Phase 3 |
+| ERA2-04 | SimCLR v2 (pretraining stage) | METHODS.md Era 2 | Phase 3 |
+| ERA2-05 | SwAV | METHODS.md Era 2 | Phase 5 |
+| ERA2-06 | InfoMin (augmentation demo) | METHODS.md Era 2 | Phase 5 |
+| ERA3-01 | BYOL | METHODS.md Era 3 | Phase 6 |
+| ERA3-02 | SimSiam | METHODS.md Era 3 | Phase 6 |
+| ERA3-03 | Barlow Twins | METHODS.md Era 3 | Phase 6 |
+| ERA4-01 | MoCo v3 | METHODS.md Era 4 | Phase 7 |
+| ERA4-02 | DINO | METHODS.md Era 4 | Phase 7 |
+| ERA4-03 | DINOv2 (fine-tuning only) | METHODS.md Era 4 | Phase 7 |
+| SUP-01 | SupCon | METHODS.md Supervised | Phase 8 |
+| INFRA-01 | InfoNCELoss | METHODS.md Shared Pattern 2 | Phase 1 |
+| INFRA-02 | MemoryBank | METHODS.md Shared Pattern 7 | Phase 2 |
+| INFRA-03 | MomentumQueue | METHODS.md Shared Pattern 7 | Phase 4 |
+| INFRA-04 | MultiCropDataset | METHODS.md Shared Pattern 8 | Phase 5 |
+| INFRA-05 | PredictorHead | METHODS.md Shared Pattern 4 | Phase 7 |
+| INFRA-06 | LARS optimizer | METHODS.md (SimCLR, BYOL, SwAV) | Phase 1 |
+| EVAL-01 | k-NN callback | EVALUATION.md k-NN section | Phase 9 |
+| EVAL-02 | Linear probe script | EVALUATION.md Linear Probing | Phase 9 |
+| EVAL-03 | t-SNE visualization | EVALUATION.md t-SNE section | Phase 9 |
+| EVAL-04 | UMAP visualization | EVALUATION.md UMAP section | Phase 9 |
+| EVAL-05 | Fine-tuning script | EVALUATION.md Fine-tuning | Phase 9 |
+| EVAL-06 | CAM visualization | EVALUATION.md CAM section | Phase 9 |
+| DOC-01 | README | PROJECT.md | Phase 10 |
+| DOC-02 | Per-method docstrings | METHODS.md sources | Phase 10 |
+| DOC-03 | Tutorial notebook/guide | PROJECT.md | Phase 10 |
 
 ---
 
