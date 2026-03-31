@@ -1,0 +1,224 @@
+"""Pydantic v2 configuration schema for the contrastive learning tutorial repo.
+
+All config classes use ``extra='forbid'`` so that unknown YAML keys raise a
+``ValidationError`` immediately — a deliberate design choice (D-08) to help
+tutorial users catch copy-paste typos early.
+
+Usage::
+
+    from core.config import TrainConfig, load_config
+
+    cfg = load_config("configs/example.yaml")
+    print(cfg.method, cfg.simclr.temperature)
+"""
+from __future__ import annotations
+
+from typing import Literal, Optional
+
+import yaml
+from pydantic import BaseModel, ConfigDict
+
+
+# ---------------------------------------------------------------------------
+# Base — ALL config classes inherit this to get extra='forbid'
+# ---------------------------------------------------------------------------
+
+class _StrictBase(BaseModel):
+    """Shared base with ``extra='forbid'`` so unknown keys raise ValidationError."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+# ---------------------------------------------------------------------------
+# Per-method sub-configs
+# ---------------------------------------------------------------------------
+
+class SimCLRConfig(_StrictBase):
+    """SimCLR / SimCLR v2 method-specific hyper-parameters."""
+
+    temperature: float = 0.5
+    projection_dim: int = 128
+
+
+class MoCoConfig(_StrictBase):
+    """MoCo (v1/v2/v3) method-specific hyper-parameters."""
+
+    temperature: float = 0.07
+    queue_size: int = 65536
+    momentum: float = 0.999
+
+
+class BYOLConfig(_StrictBase):
+    """BYOL method-specific hyper-parameters."""
+
+    base_momentum: float = 0.996
+    end_momentum: float = 1.0
+
+
+class SwAVConfig(_StrictBase):
+    """SwAV method-specific hyper-parameters."""
+
+    n_prototypes: int = 3000
+    freeze_prototypes_epochs: int = 1
+    sinkhorn_iterations: int = 3
+
+
+class BarlowTwinsConfig(_StrictBase):
+    """Barlow Twins method-specific hyper-parameters."""
+
+    lambda_coeff: float = 5e-3
+    projection_dim: int = 8192
+
+
+class SimSiamConfig(_StrictBase):
+    """SimSiam method-specific hyper-parameters."""
+
+    predictor_hidden_dim: int = 512
+
+
+class DINOConfig(_StrictBase):
+    """DINO method-specific hyper-parameters."""
+
+    n_prototypes: int = 65536
+    teacher_temp: float = 0.04
+    warmup_teacher_temp: float = 0.07
+    warmup_teacher_temp_epochs: int = 30
+
+
+class SupConConfig(_StrictBase):
+    """Supervised Contrastive Learning method-specific hyper-parameters."""
+
+    temperature: float = 0.07
+    n_samples_per_class: int = 2
+
+
+# ---------------------------------------------------------------------------
+# Eval sub-configs
+# ---------------------------------------------------------------------------
+
+class LinearProbeConfig(_StrictBase):
+    """Configuration for linear probing evaluation."""
+
+    max_epochs: int = 100
+    lr: float = 0.1
+    milestones: list[int] = [60, 80]
+
+
+class KNNConfig(_StrictBase):
+    """Configuration for k-NN evaluation."""
+
+    k: int = 200
+    temperature: float = 0.07
+    every_n_epochs: int = 5
+
+
+class TSNEConfig(_StrictBase):
+    """Configuration for t-SNE visualization."""
+
+    n_samples: int = 2000
+    perplexities: list[int] = [10, 30, 50]
+
+
+class UMAPConfig(_StrictBase):
+    """Configuration for UMAP visualization."""
+
+    n_samples: int = 5000
+    metric: str = "cosine"
+
+
+class FinetuneConfig(_StrictBase):
+    """Configuration for fine-tuning evaluation."""
+
+    backbone_lr: float = 1e-4
+    head_lr: float = 1e-3
+    freeze_bn: bool = True
+
+
+class CAMConfig(_StrictBase):
+    """Configuration for Class Activation Map visualization."""
+
+    method: str = "eigencam"
+    n_images: int = 8
+
+
+# ---------------------------------------------------------------------------
+# EvalConfig
+# ---------------------------------------------------------------------------
+
+class EvalConfig(_StrictBase):
+    """Top-level eval block — all sub-schemas are Optional."""
+
+    linear_probe: Optional[LinearProbeConfig] = None
+    knn: Optional[KNNConfig] = None
+    tsne: Optional[TSNEConfig] = None
+    umap: Optional[UMAPConfig] = None
+    finetune: Optional[FinetuneConfig] = None
+    cam: Optional[CAMConfig] = None
+
+
+# ---------------------------------------------------------------------------
+# TrainConfig — top-level schema
+# ---------------------------------------------------------------------------
+
+class TrainConfig(_StrictBase):
+    """Top-level training configuration.
+
+    Every YAML field maps directly to a field here.  Unknown keys raise a
+    ``ValidationError`` (``extra='forbid'``).
+    """
+
+    # Required
+    method: str
+
+    # Backbone
+    backbone: str = "resnet50"
+    pretrained: bool = False
+
+    # Training schedule
+    max_epochs: int = 100
+    warmup_epochs: int = 10
+    batch_size: int = 256
+    lr: float = 0.3
+    weight_decay: float = 1e-6
+    optimizer: Literal["adamw", "sgd", "lars"] = "adamw"
+    scheduler: Literal["warmup_cosine"] = "warmup_cosine"
+
+    # Data
+    n_views: int = 2
+    data_dir: str = "data"
+    num_workers: int = 4
+
+    # Per-method sub-configs (all Optional, default None)
+    simclr: Optional[SimCLRConfig] = None
+    moco: Optional[MoCoConfig] = None
+    byol: Optional[BYOLConfig] = None
+    swav: Optional[SwAVConfig] = None
+    barlow_twins: Optional[BarlowTwinsConfig] = None
+    simsiam: Optional[SimSiamConfig] = None
+    dino: Optional[DINOConfig] = None
+    supcon: Optional[SupConConfig] = None
+
+    # Evaluation
+    eval: Optional[EvalConfig] = None
+
+
+# ---------------------------------------------------------------------------
+# Helper
+# ---------------------------------------------------------------------------
+
+def load_config(path: str) -> TrainConfig:
+    """Load and validate a YAML config file.
+
+    Args:
+        path: Path to a YAML file conforming to the ``TrainConfig`` schema.
+
+    Returns:
+        A fully-validated ``TrainConfig`` instance.
+
+    Raises:
+        pydantic.ValidationError: If the YAML contains unknown keys or invalid
+            types at any nesting level.
+    """
+    with open(path) as fh:
+        raw = yaml.safe_load(fh)
+    return TrainConfig.model_validate(raw)

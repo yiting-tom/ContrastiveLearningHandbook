@@ -1,0 +1,22 @@
+method: simclr_v1
+backbone: resnet18
+pretrained: false
+max_epochs: 100
+warmup_epochs: 10
+batch_size: 256
+lr: 0.3
+weight_decay: 1.0e-6
+optimizer: lars
+n_views: 2
+data_dir: data
+num_workers: 4
+
+simclr:
+  temperature: 0.5
+  projection_dim: 128
+
+eval:
+  knn:
+    k: 200
+    temperature: 0.07
+    every_n_epochs: 5
