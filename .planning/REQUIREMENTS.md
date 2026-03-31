@@ -11,7 +11,7 @@
 
 - [ ] **FOUND-01**: `BaseSSLModule(LightningModule)` abstract base class with `build_projector()`, `learnable_params` property, `configure_optimizers()` (AdamW/SGD/LARS dispatch + warmup-cosine scheduler), and `on_train_batch_end()` hook for EMA updates. All method subclasses must extend this class — no standalone training scripts.
 
-- [ ] **FOUND-02**: Pydantic v2 config schema (`TrainConfig`) with top-level fields for `method`, `backbone`, `pretrained`, `max_epochs`, `warmup_epochs`, `batch_size`, `lr`, `weight_decay`, `optimizer`, `scheduler`, plus namespaced per-method sub-configs (e.g., `simclr.temperature`). YAML is loaded via `yaml.safe_load` and validated by `TrainConfig.model_validate(raw)`. No Hydra. No OmegaConf.
+- [x] **FOUND-02**: Pydantic v2 config schema (`TrainConfig`) with top-level fields for `method`, `backbone`, `pretrained`, `max_epochs`, `warmup_epochs`, `batch_size`, `lr`, `weight_decay`, `optimizer`, `scheduler`, plus namespaced per-method sub-configs (e.g., `simclr.temperature`). YAML is loaded via `yaml.safe_load` and validated by `TrainConfig.model_validate(raw)`. No Hydra. No OmegaConf.
 
 - [ ] **FOUND-03**: `build_backbone(model_name, pretrained=False)` factory using `timm.create_model(..., num_classes=0)`. Must return `(backbone, feat_dim)` where `feat_dim = backbone.num_features`. Never hard-code feature dimensions or use `backbone.inplanes` (ResNet-only). Supports any timm architecture name; bare names (`resnet50`, `vit_small_patch16_224`) resolve correctly under timm 1.x.
 
@@ -23,7 +23,7 @@
 
 - [ ] **FOUND-07**: `method_dispatcher(cfg: TrainConfig) -> BaseSSLModule` factory. Maps the `method` string in config to the correct `LightningModule` subclass. Raises `ValueError` with available methods listed when an unknown method is specified.
 
-- [ ] **FOUND-08**: `EvalConfig` Pydantic sub-schema added to `TrainConfig` under an `eval:` key. Sub-configs: `LinearProbeConfig`, `KNNConfig`, `TSNEConfig`, `UMAPConfig`, `FinetuneConfig`, `CAMConfig`. All evaluation settings live in the same YAML as pretraining — one file per experiment.
+- [x] **FOUND-08**: `EvalConfig` Pydantic sub-schema added to `TrainConfig` under an `eval:` key. Sub-configs: `LinearProbeConfig`, `KNNConfig`, `TSNEConfig`, `UMAPConfig`, `FinetuneConfig`, `CAMConfig`. All evaluation settings live in the same YAML as pretraining — one file per experiment.
 
 - [ ] **FOUND-09**: TensorBoard logging wired by default. At minimum, log `train/loss`, `train/lr`, and `eval/knn_acc` (when k-NN callback is enabled). Logging is handled through `self.log(...)` / `self.log_dict(...)` in the base class — no per-method logging boilerplate.
 
