@@ -6,7 +6,7 @@ This roadmap builds the tutorial repository from shared infrastructure outward t
 
 ## Phases
 
-- [ ] **Phase 1: Foundation** - Shared base class, config schema, timm backbone factory, projection head, augmentation pipeline, data module, dispatcher, EMA updater, and logging wiring
+- [x] **Phase 1: Foundation** - Shared base class, config schema, timm backbone factory, projection head, augmentation pipeline, data module, dispatcher, EMA updater, and logging wiring (completed 2026-03-31)
 - [ ] **Phase 2: Proxy Tasks Era** - Instance Discrimination (memory bank, NCE loss) and Invariant Spread (in-batch softmax baseline)
 - [ ] **Phase 3: SimCLR** - SimCLR v1 and v2 with NT-Xent loss, LARS optimizer, and augmentation pipeline
 - [ ] **Phase 4: MoCo** - MoCo v1 and v2 with momentum encoder, FIFO queue, and shuffled BN
@@ -41,7 +41,7 @@ Plans:
 - [x] 01-04-PLAN.md — `ContrastiveAugmentation` (strong/weak paths) + `SSLDataModule` (multi-view ImageFolder)
 - [x] 01-05-PLAN.md — `EMAUpdater` with cosine-scheduled momentum
 - [x] 01-06-PLAN.md — `BaseSSLModule` abstract base class (configure_optimizers, EMA hook, logging) + `core/__init__.py` re-exports
-- [ ] 01-07-PLAN.md — `method_dispatcher` factory with registry pattern
+- [x] 01-07-PLAN.md — `method_dispatcher` factory with registry pattern
 
 **UI hint**: no
 
@@ -281,7 +281,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 6/7 | In Progress|  |
+| 1. Foundation | 7/7 | Complete   | 2026-03-31 |
 | 2. Proxy Tasks Era | 0/5 | Not started | - |
 | 3. SimCLR | 0/6 | Not started | - |
 | 4. MoCo | 0/6 | Not started | - |

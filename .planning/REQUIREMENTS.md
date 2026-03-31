@@ -21,7 +21,7 @@
 
 - [x] **FOUND-06**: `SSLDataModule(LightningDataModule)` wrapping either ImageFolder-style data directories or a custom dataset class. Accepts `n_views` to produce the correct number of augmented views per sample. DataModule is shared across all methods; per-method differences are in `n_views` only (2 for most, 8+ for SwAV/DINO multi-crop).
 
-- [ ] **FOUND-07**: `method_dispatcher(cfg: TrainConfig) -> BaseSSLModule` factory. Maps the `method` string in config to the correct `LightningModule` subclass. Raises `ValueError` with available methods listed when an unknown method is specified.
+- [x] **FOUND-07**: `method_dispatcher(cfg: TrainConfig) -> BaseSSLModule` factory. Maps the `method` string in config to the correct `LightningModule` subclass. Raises `ValueError` with available methods listed when an unknown method is specified.
 
 - [x] **FOUND-08**: `EvalConfig` Pydantic sub-schema added to `TrainConfig` under an `eval:` key. Sub-configs: `LinearProbeConfig`, `KNNConfig`, `TSNEConfig`, `UMAPConfig`, `FinetuneConfig`, `CAMConfig`. All evaluation settings live in the same YAML as pretraining — one file per experiment.
 
