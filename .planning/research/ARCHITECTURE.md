@@ -2,285 +2,263 @@
 
 **Project:** SSL / Contrastive Learning Tutorial Repository
 **Researched:** 2026-03-29
-**Confidence:** HIGH for directory structure, interface design, and DataModule patterns (verified against solo-learn source, LightlySSL docs, PyTorch Lightning 2.6.x official docs). MEDIUM for testing and documentation patterns (multiple corroborating sources, no single authoritative reference for tutorial repos specifically).
+**Confidence:** HIGH — patterns verified against solo-learn source, LightlySSL docs, official PyTorch Lightning 2.6.x docs, and VICReg/Barlow Twins literature.
 
 ---
 
 ## Directory Structure
 
-### Recommended Layout
+### Recommendation: Flat `methods/` with One File Per Method
 
-The solo-learn library (the most actively maintained multi-method SSL repo as of 2024–2025, published in JMLR Vol. 23) establishes the canonical pattern: flat `methods/` directory where each file is one method, a shared `losses/` module, and a `utils/` module. LightlySSL separates concerns differently (models, transforms, losses all at the top level) but the effect is the same.
-
-For a tutorial repo implementing 15+ methods, the right choice is a **flat `methods/` directory** rather than nested subdirectories. The cognitive cost of navigating `methods/contrastive/instance_discrimination/model.py` is too high when a reader wants to compare SimCLR and BYOL side by side.
+The solo-learn pattern is the gold standard for this kind of repo. After inspecting both solo-learn (`solo/methods/` — 22 files) and LightlySSL (`lightly/models/` — 13 files), the correct layout for 15+ methods is a flat directory with era-grouped comments in the registry, not subdirectories.
 
 ```
-ssl-tutorial/
-├── methods/                    # One file per method
-│   ├── __init__.py             # Registry: METHOD_REGISTRY = {"simclr": SimCLRModule, ...}
-│   ├── base.py                 # BaseSSLMethod ABC (see Interface Design section)
+ml_topic_contrastive_learning/
+├── methods/
+│   ├── __init__.py               # METHODS dict registry; explicit exports
+│   ├── base.py                   # BaseSSLMethod (LightningModule)
+│   ├── base_momentum.py          # BaseMomentumMethod (adds EMA encoder)
+│   │
+│   ├── # --- Era 1: Proxy Tasks (2018-2019) ---
 │   ├── instance_discrimination.py
 │   ├── invariant_spread.py
 │   ├── cpc.py
+│   ├── amdim.py
+│   │
+│   ├── # --- Era 2: Contrastive (2019-2020) ---
 │   ├── cmc.py
-│   ├── deep_cluster.py
 │   ├── moco_v1.py
-│   ├── simclr_v1.py
+│   ├── simclr.py
 │   ├── moco_v2.py
-│   ├── simclr_v2.py
-│   ├── swav.py
+│   │
+│   ├── # --- Era 3: No-Negatives (2020-2021) ---
 │   ├── byol.py
 │   ├── simsiam.py
+│   ├── swav.py
 │   ├── barlow_twins.py
+│   │
+│   ├── # --- Era 4: Regularization-Based (2021-2022) ---
+│   ├── vicreg.py
 │   ├── moco_v3.py
 │   ├── dino.py
-│   └── supcon.py
+│   │
+│   └── # --- Era 5: Masked / ViT-Native (2021-2022) ---
+│       ├── mae.py
+│       └── ibot.py
 │
-├── losses/                     # Decoupled from LightningModules
+├── losses/
 │   ├── __init__.py
-│   ├── ntxent.py               # SimCLR NT-Xent / InfoNCE
-│   ├── nce.py                  # Instance Discrimination NCE
-│   ├── byol.py                 # Cosine similarity loss
-│   ├── barlow.py               # Cross-correlation loss
-│   ├── vicreg.py               # Variance-Invariance-Covariance
-│   └── swav.py                 # Sinkhorn-Knopp + prototype loss
+│   ├── ntxent.py                 # NT-Xent / InfoNCE (SimCLR, MoCo, NNCLR)
+│   ├── byol_loss.py              # negative cosine similarity
+│   ├── barlow_loss.py            # cross-correlation matrix loss
+│   ├── vicreg_loss.py            # variance + invariance + covariance
+│   └── swav_loss.py              # swapped assignments + Sinkhorn-Knopp
 │
-├── transforms/                 # Method-specific augmentation pipelines
+├── transforms/
 │   ├── __init__.py
-│   ├── base.py                 # MultiViewTransform base class
-│   ├── simclr.py               # SimCLRTransform (2 views)
-│   ├── moco.py                 # MoCoTransform (2 views, no blur in v1)
-│   ├── byol.py                 # BYOLTransform (2 asymmetric views)
-│   ├── dino.py                 # DINOTransform (2 global + N local crops)
-│   └── cpc.py                  # CPCTransform (grid of patches)
+│   ├── base_transform.py         # two-view: RandomResizedCrop + ColorJitter + GaussianBlur
+│   ├── simclr_transform.py       # strong color jitter per Chen 2020
+│   ├── byol_transform.py         # asymmetric: different strengths for view1/view2
+│   ├── dino_transform.py         # multi-crop: 2 global (224) + N local (96)
+│   └── mae_transform.py          # minimal: just center crop, normalization
 │
 ├── data/
 │   ├── __init__.py
-│   ├── datamodule.py           # SSLDataModule (see DataModule Design section)
-│   └── memory_bank.py          # NNMemoryBank for MoCo, Instance Discrimination
+│   ├── datamodule.py             # SSLDataModule (LightningDataModule)
+│   └── multi_view_dataset.py     # wraps any Dataset; applies multi-view transform
 │
-├── configs/                    # One YAML per method × backbone combination
+├── eval/
+│   ├── __init__.py
+│   ├── linear_probe.py           # offline linear evaluation script
+│   ├── knn_eval.py               # online KNNEvalCallback (Lightning Callback)
+│   └── online_linear.py          # optional online linear head (solo-learn style)
+│
+├── configs/
+│   ├── schema.py                 # Pydantic v2 config models
 │   ├── simclr_resnet50.yaml
 │   ├── byol_resnet50.yaml
-│   ├── dino_vit_small.yaml
-│   └── ...
-│
-├── configs/schema.py           # Pydantic v2 config models
-│
-├── evaluation/
-│   ├── __init__.py
-│   ├── linear_probe.py         # sklearn LogisticRegression on frozen features
-│   ├── knn.py                  # k-NN eval on feature bank
-│   ├── tsne_umap.py            # Embedding visualization
-│   └── cam.py                  # Grad-CAM / activation maps
+│   └── ...                       # one YAML per method
 │
 ├── tests/
-│   ├── conftest.py             # Shared fixtures: tiny_batch, tiny_backbone
-│   ├── test_methods.py         # Parametrized smoke tests for ALL methods
-│   ├── test_losses.py          # Loss function unit tests
-│   ├── test_transforms.py      # Augmentation output shape / value tests
-│   ├── test_datamodule.py      # DataModule setup / loader tests
-│   └── test_configs.py         # Config schema validation tests
+│   ├── conftest.py               # shared fixtures: tiny_batch, tiny_model, gen_trainer
+│   ├── test_simclr.py
+│   ├── test_byol.py
+│   └── ...                       # one test file per method
+│
+├── notebooks/
+│   └── 01_simclr_walkthrough.ipynb
 │
 ├── scripts/
-│   ├── pretrain.py             # Main training entry point
-│   └── evaluate.py             # Post-training evaluation entry point
-│
-├── notebooks/                  # Pedagogical Jupyter notebooks
-│   ├── 01_simclr_walkthrough.ipynb
-│   ├── 02_moco_memory_bank.ipynb
-│   └── ...
+│   ├── pretrain.py               # main entry point
+│   ├── linear_eval.py
+│   └── knn_eval.py
 │
 ├── requirements.txt
 ├── pyproject.toml
 └── README.md
 ```
 
-### Key Organizational Decisions
+### Key Structural Decisions
 
-**Flat `methods/` directory:** Each file is one method. No subdirectories. When a reader is following a paper alongside the code, they open `methods/byol.py` and see exactly one class. This is how solo-learn organizes its 13+ methods.
+**Why one file per method, not grouped in subdirectories.** Files are searched and opened individually. A flat list is easier to navigate and link from documentation. Era grouping via comments in `__init__.py` provides logical structure without adding import path complexity.
 
-**Separate `losses/` from `methods/`:** The loss function is the most intellectually interesting part of each paper. Keeping it separate means `methods/simclr.py` has a clean `training_step` that calls `losses.ntxent(z1, z2, temperature)`. Readers can study the loss independently. This pattern is used by both LightlySSL (`lightly.loss`) and solo-learn.
+**Why `losses/` is separate from `methods/`.** NT-Xent is used by SimCLR, MoCo v1/v2, and NNCLR. A separate `losses/` directory makes each loss independently testable and avoids circular imports. LightlySSL uses the same separation pattern.
 
-**`transforms/` directory, not inline augmentations:** Each method has specific augmentation requirements (DINO uses 2 global + 6–10 local crops; BYOL uses asymmetric pipelines; CPC uses patch grids). Keeping these in a dedicated module makes the augmentation logic reviewable without opening a 300-line LightningModule.
+**Why `transforms/` is separate.** DINO's multi-crop pipeline (2 global views at 224px + N local views at 96px) is fundamentally different from SimCLR's two-view pipeline. Keeping transforms separate makes it clear which augmentation belongs to which method and allows `SSLDataModule` to accept any callable transform.
 
-**`METHOD_REGISTRY` dict in `methods/__init__.py`:** Enables the dispatcher pattern without import gymnastics. `build_module(cfg)` looks up `METHOD_REGISTRY[cfg.method]` and instantiates the right class. Adding a new method requires: (1) writing the method file, (2) adding one entry to the registry.
+**`__init__.py` registry pattern (from solo-learn source, HIGH confidence):**
+
+```python
+# methods/__init__.py
+from .simclr import SimCLR
+from .byol import BYOL
+from .moco_v2 import MoCoV2
+# ... all methods ...
+
+METHODS = {
+    "simclr": SimCLR,
+    "byol": BYOL,
+    "moco_v2": MoCoV2,
+    # ...
+}
+
+__all__ = ["METHODS", "SimCLR", "BYOL", "MoCoV2", ...]
+```
+
+Solo-learn uses explicit manual registration (not filesystem scanning or `importlib` magic). This gives full control, clear visibility in `__init__.py`, and avoids fragile dynamic import paths. The `METHODS` dict enables string-based dispatch from a config file.
 
 ---
 
 ## Interface Design (BaseSSLMethod)
 
-### What the Base Class Must Own
+### Two-Level Class Hierarchy
 
-Based on the solo-learn `BaseMethod(LightningModule)` design and LightlySSL patterns, the base class should own everything that is identical across methods. The subclass implements only what differs.
+```
+lightning.LightningModule
+    └── BaseSSLMethod          (methods/base.py)
+            └── BaseMomentumMethod   (methods/base_momentum.py)
+```
 
-**Base class owns:**
-- Backbone instantiation (via timm, `num_classes=0`)
-- Projection head interface (`build_projector()` — abstract, subclass overrides)
-- `learnable_params` property for optimizer construction (subclasses extend it to add predictor heads, prototypes, etc.)
-- `configure_optimizers()` with warmup-cosine schedule
-- `validation_step()` with optional KNN evaluation on frozen backbone features
-- Logging helpers
+Methods without a momentum encoder inherit `BaseSSLMethod` directly: SimCLR, SimSiam, Barlow Twins, VICReg, SwAV, MAE, Instance Discrimination, Invariant Spread, CPC.
 
-**Subclass owns:**
-- `build_projector()` — returns the method-specific projection head (different architecture per method)
-- `forward(views)` — the method-specific forward pass (symmetric vs. asymmetric, predictor, stop-gradient)
-- `training_step(batch, batch_idx)` — computes the method-specific loss
-- `learnable_params` property extension — adds predictor/prototype param groups if needed
-- Any additional `__init__` components (momentum encoder, queue, prototypes, memory bank)
+Methods with a momentum encoder inherit `BaseMomentumMethod`: MoCo v1/v2/v3, BYOL, DINO, iBOT.
 
-### Recommended BaseSSLMethod Signature
+This matches the solo-learn hierarchy exactly (`BaseMethod` / `BaseMomentumMethod`), verified by source inspection.
+
+### BaseSSLMethod Contract
 
 ```python
-from abc import ABC, abstractmethod
-from typing import Any
-import lightning as L
+# methods/base.py
+from __future__ import annotations
+from abc import abstractmethod
 import torch
 import torch.nn as nn
-import timm
+import lightning as L
 
 
-class BaseSSLMethod(L.LightningModule, ABC):
+class BaseSSLMethod(L.LightningModule):
     """
     Abstract base class for all self-supervised learning methods.
 
-    Every method in this repository extends this class and must implement:
-      - build_projector()  -- return the projection head nn.Module
-      - forward()          -- return (features, projections) given a list of augmented views
-      - training_step()    -- compute and return the method-specific loss
+    Subclasses MUST implement:
+        build_projector(feat_dim)  -- returns the projection MLP
+        forward(x)                 -- single-view: returns dict with "h" and "z"
+        ssl_loss(outputs, batch)   -- computes the training loss
 
-    The base class handles:
-      - Backbone construction via timm (num_classes=0 for pooled features)
-      - configure_optimizers() with LinearWarmup + CosineAnnealing
-      - validation_step() with K-NN evaluation on backbone features
-      - Logging helpers
-
-    Parameters
-    ----------
-    backbone_name : str
-        Any timm model name, e.g. "resnet50", "vit_small_patch16_224".
-    proj_out_dim : int
-        Output dimension of the projection head. Method-specific default in subclass.
-    lr : float
-        Peak learning rate after warmup.
-    weight_decay : float
-        AdamW weight decay.
-    max_epochs : int
-        Total training epochs (needed to schedule cosine decay).
-    warmup_epochs : int
-        Number of linear warmup epochs before cosine decay begins.
+    Subclasses MAY override:
+        learnable_params           -- inject extra optimizer param groups
+        default_transform()        -- return method-specific augmentation
+        on_train_batch_end(...)    -- momentum update, queue update
     """
 
     def __init__(
         self,
-        backbone_name: str,
-        proj_out_dim: int,
+        backbone: nn.Module,
+        feat_dim: int,
         lr: float,
         weight_decay: float,
         max_epochs: int,
-        warmup_epochs: int,
+        warmup_epochs: int = 10,
+        num_classes: int = 0,
     ):
         super().__init__()
-        self.save_hyperparameters(ignore=[])
-
-        # Build backbone — num_classes=0 removes the classifier, keeps global pool
-        # backbone.num_features is the universal attribute across all timm architectures
-        self.backbone = timm.create_model(backbone_name, pretrained=False, num_classes=0)
-        self.feat_dim: int = self.backbone.num_features
-
-        # Subclass builds its projection head
-        self.projector: nn.Module = self.build_projector(self.feat_dim, proj_out_dim)
+        self.save_hyperparameters(ignore=["backbone"])
+        self.backbone = backbone
+        self.projector = self.build_projector(feat_dim)
+        if num_classes > 0:
+            # Online linear head for monitoring (not used in ssl_loss)
+            self.online_classifier = nn.Linear(feat_dim, num_classes)
 
     @abstractmethod
-    def build_projector(self, feat_dim: int, proj_out_dim: int) -> nn.Module:
+    def build_projector(self, feat_dim: int) -> nn.Module:
+        """Return the projection head (MLP from feat_dim to embedding space)."""
+        ...
+
+    @abstractmethod
+    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
         """
-        Build and return the projection head.
-
-        The returned module maps backbone features [B, feat_dim] to
-        projected embeddings [B, proj_out_dim].
-
-        Notes
-        -----
-        - SimCLR: 2-layer MLP with BN, ReLU (Chen et al. 2020, Eq. 1)
-        - BYOL:   4096-dim hidden, 256-dim output, BN after each linear (Grill et al. 2020)
-        - DINO:   3-layer MLP with hidden norm, L2-normalized output
+        Single-view forward pass. Returns a dict with at minimum:
+            "h": backbone features  [B, feat_dim]
+            "z": projected embeddings  [B, proj_dim]
+        Methods like BYOL that have a predictor also return "p" here.
+        Multi-view collation for training is handled in training_step.
         """
         ...
 
     @abstractmethod
-    def forward(self, views: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
-        """
-        Run the method-specific forward pass.
-
-        Parameters
-        ----------
-        views : list of Tensor
-            List of augmented views. Length and semantics are method-specific:
-              - SimCLR: [view1, view2], both processed by same encoder
-              - BYOL:   [online_view, target_view], processed by separate encoders
-              - DINO:   [global1, global2, local_1, ..., local_N]
-
-        Returns
-        -------
-        feats : Tensor [B, feat_dim]
-            Pre-projection backbone features. Used for downstream evaluation.
-        proj : Tensor [B, proj_out_dim] or list of Tensors (for multi-crop methods)
-            Projected embeddings. Used for computing training loss.
-        """
-        ...
-
-    @abstractmethod
-    def training_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
-        """
-        Compute and return the training loss for one batch.
-
-        Must call self.log("train/loss", loss) before returning.
-        Additional method-specific metrics (e.g., std_z for collapse detection)
-        should also be logged here.
-
-        Returns
-        -------
-        loss : Tensor
-            Scalar loss tensor. Lightning handles the backward() and optimizer.step().
-        """
+    def ssl_loss(
+        self, outputs: dict[str, list[torch.Tensor]], batch: tuple
+    ) -> torch.Tensor:
+        """Compute the SSL training loss from multi-view forward outputs."""
         ...
 
     @property
     def learnable_params(self) -> list[dict]:
         """
-        Parameter groups for the optimizer.
-
-        Subclasses that add extra modules (predictor head, prototypes) should
-        override this property and append their param groups:
-
-            def learnable_params(self):
-                return super().learnable_params + [
-                    {"name": "predictor", "params": self.predictor.parameters()}
-                ]
-
-        Critical: NEVER include momentum encoder params here. EMA encoders
-        must NOT receive gradient updates.
+        Return optimizer parameter groups.
+        Subclasses MUST call super().learnable_params and extend the list.
+        Never include momentum encoder parameters here.
         """
-        return [
+        params = [
             {"name": "backbone", "params": self.backbone.parameters()},
             {"name": "projector", "params": self.projector.parameters()},
         ]
+        if hasattr(self, "online_classifier"):
+            params.append(
+                {"name": "classifier", "params": self.online_classifier.parameters()}
+            )
+        return params
+
+    def training_step(self, batch, batch_idx):
+        views, labels = batch  # views is a list of tensors, one per augmented view
+        outputs: dict[str, list] = {}
+        for v in views:
+            out = self.forward(v)
+            for k, val in out.items():
+                outputs.setdefault(k, []).append(val)
+        loss = self.ssl_loss(outputs, batch)
+        self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        if not hasattr(self, "online_classifier"):
+            return
+        x, labels = batch[0][0], batch[1]   # first view only, not augmented
+        with torch.no_grad():
+            h = self.backbone(x)
+        logits = self.online_classifier(h)
+        acc = (logits.argmax(dim=1) == labels).float().mean()
+        self.log("val/acc_top1", acc, prog_bar=True)
 
     def configure_optimizers(self):
-        """
-        AdamW optimizer with linear warmup + cosine annealing.
-
-        See pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR
-        or implement directly. All methods in this repo use this schedule
-        unless the original paper specifies otherwise (DeepCluster uses SGD + step decay).
-        """
         optimizer = torch.optim.AdamW(
             self.learnable_params,
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-        # LinearWarmupCosineAnnealingLR from pl-bolts or a minimal reimplementation
-        scheduler = _build_warmup_cosine_scheduler(
+        # LinearWarmupCosineAnnealingLR from pl_bolts or custom implementation
+        from methods._schedulers import build_warmup_cosine_scheduler
+        scheduler = build_warmup_cosine_scheduler(
             optimizer,
             warmup_epochs=self.hparams.warmup_epochs,
             max_epochs=self.hparams.max_epochs,
@@ -290,648 +268,675 @@ class BaseSSLMethod(L.LightningModule, ABC):
             "lr_scheduler": {"scheduler": scheduler, "interval": "epoch"},
         }
 
-    def validation_step(self, batch: Any, batch_idx: int) -> None:
+    @classmethod
+    def default_transform(cls):
         """
-        Optional: compute K-NN accuracy on backbone features.
-
-        Default implementation is a no-op. Override in subclasses or use
-        a Lightning Callback for KNN eval to keep this method clean.
+        Return the canonical augmentation pipeline for this method.
+        Used by SSLDataModule when no custom transform is provided.
+        Subclasses should override.
         """
-        pass
+        from transforms.base_transform import BaseSSLTransform
+        return BaseSSLTransform()
 ```
 
-### Handling Method-Specific Augmentation Pipelines
-
-The augmentation pipeline is NOT part of the `LightningModule`. It belongs in the `transforms/` directory and is attached to the `DataModule`. This separation is important: readers comparing methods should see method logic in `methods/`, augmentation logic in `transforms/`.
-
-Pattern from LightlySSL — each method gets its own `Transform` class that wraps PyTorch's `transforms.v2` (preferred in PyTorch 2.x):
+### BaseMomentumMethod Extension
 
 ```python
-# transforms/base.py
-class MultiViewTransform:
-    """Apply a list of transforms to the same image, returning N views."""
-    def __init__(self, transforms: list):
-        self.transforms = transforms
-
-    def __call__(self, img):
-        return [t(img) for t in self.transforms]
+# methods/base_momentum.py
+import copy
+from lightly.models.utils import deactivate_requires_grad, update_momentum
+from .base import BaseSSLMethod
 
 
-# transforms/simclr.py
-class SimCLRTransform(MultiViewTransform):
+class BaseMomentumMethod(BaseSSLMethod):
     """
-    Two-view augmentation pipeline from SimCLR (Chen et al. 2020).
+    Extends BaseSSLMethod with an EMA (momentum) encoder.
+    Used by: MoCo v1/v2/v3, BYOL, DINO, iBOT.
 
-    Augmentations applied: RandomResizedCrop, RandomHorizontalFlip,
-    ColorJitter, RandomGrayscale, GaussianBlur.
-
-    See paper: Chen et al. (2020), Section 3 and Appendix A.
-    The specific strength of color distortion (s=0.5) is from Table 3.
+    The momentum encoder MUST NOT appear in learnable_params.
+    EMA update is placed in on_train_batch_end (after optimizer.step),
+    ensuring the EMA is computed on freshly updated online weights.
     """
-    def __init__(self, image_size: int = 224, s: float = 0.5):
-        view_transform = T.Compose([
-            T.RandomResizedCrop(image_size, scale=(0.2, 1.0)),
-            T.RandomHorizontalFlip(),
-            T.RandomApply([T.ColorJitter(0.8*s, 0.8*s, 0.8*s, 0.2*s)], p=0.8),
-            T.RandomGrayscale(p=0.2),
-            T.GaussianBlur(kernel_size=int(0.1 * image_size) | 1),
-            T.ToTensor(),
-            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-        super().__init__([view_transform, view_transform])
+
+    def __init__(self, *args, momentum: float = 0.996, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.momentum = momentum
+        self.backbone_ema = copy.deepcopy(self.backbone)
+        self.projector_ema = copy.deepcopy(self.projector)
+        deactivate_requires_grad(self.backbone_ema)
+        deactivate_requires_grad(self.projector_ema)
+        # Do NOT include *_ema in learnable_params — they must never receive gradients.
+
+    def on_train_batch_end(self, outputs, batch, batch_idx):
+        # After optimizer.step() has updated online weights
+        update_momentum(self.backbone, self.backbone_ema, self.momentum)
+        update_momentum(self.projector, self.projector_ema, self.momentum)
 ```
 
-The `SSLDataModule` receives the transform class name or instance from config and applies it. Each method's config YAML specifies which transform to use.
+**Why `on_train_batch_end` and not `training_step`.** The EMA update should see the freshly optimizer-stepped online weights. `on_train_batch_end` is called after `optimizer.step()`, making the update semantically correct. Placing it inside `training_step` before the loss computation would use stale online weights. This is the pattern used by both solo-learn and LightlySSL.
 
-### Methods That Need Asymmetric or Non-Standard Transforms
+### Per-Method Augmentation Handling
 
-| Method | Transform Requirement | Implementation Note |
-|--------|----------------------|---------------------|
-| SimCLR v1/v2 | Symmetric 2 views | `SimCLRTransform` |
-| MoCo v1 | Symmetric 2 views, no blur | `MoCoV1Transform` |
-| MoCo v2 | Symmetric 2 views, with blur | `SimCLRTransform` (identical) |
-| BYOL | Asymmetric: view1 has blur, view2 has solarize | `BYOLTransform` |
-| DINO | 2 global crops (224) + 6–10 local crops (96) | `DINOTransform` — multi-resolution |
-| CPC | Grid of patches, not augmented views | `CPCTransform` — entirely different paradigm |
-| SwAV | Multi-crop: 2×224 + 6×96 | `SwAVTransform` |
-| CMC | Two color channels (L, ab in Lab space) | `CMCTransform` — channel split, not augmentation |
+Each method ships its own transform class. The `SSLDataModule` receives a transform callable and passes it to `MultiViewDataset`. The transform is applied per-sample in `__getitem__` and returns a tuple of views.
 
-DINO and SwAV are the two methods where the DataModule must be aware of multi-resolution output — the batch is a list of tensors with different spatial sizes, not a single stacked tensor.
+```
+transforms/simclr_transform.py   → SimCLRTransform()   returns (view1, view2)
+transforms/byol_transform.py     → BYOLTransform()     returns (view1, view2) with asymmetric strength
+transforms/dino_transform.py     → DINOTransform()     returns (global1, global2, local1, ..., localN)
+transforms/mae_transform.py      → MAETransform()      returns (x,) — masking happens inside the model
+```
+
+The `default_transform()` classmethod on each method subclass returns the correct transform object. This allows using a method without any config file:
+
+```python
+model = SimCLR(backbone=..., ...)
+dm = SSLDataModule(data_dir="data/", transform=SimCLR.default_transform())
+```
 
 ---
 
 ## DataModule Design
 
-### Recommended: Single `SSLDataModule` with Transform Injection
-
-The goal is a single `LightningDataModule` that handles ImageFolder-style datasets by default, but accepts any PyTorch `Dataset` as an override. Transform injection (passing the transform in) is cleaner than subclassing for each method.
+### SSLDataModule Interface
 
 ```python
 # data/datamodule.py
-from pathlib import Path
-import torch
+import lightning as L
 from torch.utils.data import DataLoader, Dataset
 from torchvision.datasets import ImageFolder
-from torchvision import transforms as T
-import lightning as L
 
 
 class SSLDataModule(L.LightningDataModule):
     """
-    General-purpose DataModule for self-supervised pretraining.
+    Flexible LightningDataModule for SSL pretraining.
 
-    Supports:
-      - ImageFolder-style datasets (default, requires root_dir with class subdirs)
-      - Custom Dataset instances (pass dataset_train / dataset_val directly)
+    Supports three usage modes:
+        1. Path to an ImageFolder-style directory  (data_dir="path/to/root")
+        2. Named built-in dataset                 (dataset_name="cifar10")
+        3. Explicit torch Dataset                 (train_dataset=my_dataset)
 
-    The transform is injected — it is NOT built internally. Pass the method-
-    specific MultiViewTransform from transforms/ to the constructor.
+    The transform must return a tuple of views: (view1, view2) or more.
+    If not provided, defaults to BaseSSLTransform (two-view, standard augmentations).
 
     Parameters
     ----------
-    root_dir : str or Path
-        Root of an ImageFolder-layout directory. Ignored if dataset_train is given.
-    train_transform : callable
-        Applied to each training image. Should return a list of views (MultiViewTransform).
-    val_transform : callable, optional
-        Applied during validation. Default: center crop + normalize (single view).
+    data_dir : str, optional
+        Path to a folder containing train/ and (optionally) val/ subdirectories
+        in ImageFolder format: root/class_name/image.jpg.
+    dataset_name : str, optional
+        One of "cifar10", "cifar100", "stl10". Downloads automatically.
+    train_dataset : Dataset, optional
+        Explicit Dataset override. Mutually exclusive with data_dir/dataset_name.
+    transform : callable, optional
+        Multi-view transform. Must return a tuple of tensors.
     batch_size : int
-        Number of images per batch. Note: effective contrastive batch size is
-        batch_size * num_views.
+        Per-device batch size. Default 256.
     num_workers : int
-        DataLoader workers. Rule of thumb: 4 per GPU.
-    dataset_train : Dataset, optional
-        Override the ImageFolder training dataset with a custom Dataset.
-    dataset_val : Dataset, optional
-        Override the ImageFolder validation dataset with a custom Dataset.
+        DataLoader workers. Default 8.
+    drop_last : bool
+        Drop the last incomplete batch. MUST be True for NT-Xent and BatchNorm.
+        Default True.
     """
 
     def __init__(
         self,
-        root_dir: str | Path,
-        train_transform,
+        data_dir: str | None = None,
+        dataset_name: str | None = None,
+        train_dataset: Dataset | None = None,
+        transform=None,
         val_transform=None,
         batch_size: int = 256,
         num_workers: int = 8,
-        dataset_train: Dataset | None = None,
-        dataset_val: Dataset | None = None,
+        val_split: float = 0.0,
         pin_memory: bool = True,
         drop_last: bool = True,
     ):
         super().__init__()
-        self.save_hyperparameters(ignore=["train_transform", "val_transform",
-                                          "dataset_train", "dataset_val"])
-        self.root_dir = Path(root_dir)
-        self.train_transform = train_transform
-        self.val_transform = val_transform or self._default_val_transform()
-        self._dataset_train = dataset_train
-        self._dataset_val = dataset_val
+        self.save_hyperparameters(ignore=["train_dataset", "transform", "val_transform"])
+        self._explicit_dataset = train_dataset
+        self.transform = transform
+        self.val_transform = val_transform
 
     def setup(self, stage: str | None = None):
-        if stage in ("fit", None):
-            if self._dataset_train is not None:
-                self.train_dataset = self._dataset_train
-            else:
-                self.train_dataset = ImageFolder(
-                    root=self.root_dir / "train",
-                    transform=self.train_transform,
-                )
+        from data.multi_view_dataset import MultiViewDataset
+        if self._explicit_dataset is not None:
+            base = self._explicit_dataset
+        elif self.hparams.dataset_name:
+            base = self._build_builtin_dataset()
+        else:
+            base = ImageFolder(root=self.hparams.data_dir)
+        self.train_ds = MultiViewDataset(base, self.transform or BaseSSLTransform())
+        # Validation: single-view with labels for online kNN/linear monitoring
+        self.val_ds = self._build_val_dataset()
 
-        if stage in ("validate", "fit", None):
-            if self._dataset_val is not None:
-                self.val_dataset = self._dataset_val
-            else:
-                val_root = self.root_dir / "val"
-                if val_root.exists():
-                    self.val_dataset = ImageFolder(
-                        root=val_root,
-                        transform=self.val_transform,
-                    )
-                else:
-                    # No validation split — create a small random subset of train
-                    from torch.utils.data import Subset
-                    import random
-                    idxs = random.sample(range(len(self.train_dataset)), k=min(2000, len(self.train_dataset)))
-                    self.val_dataset = Subset(
-                        ImageFolder(root=self.root_dir / "train", transform=self.val_transform),
-                        idxs,
-                    )
-
-    def train_dataloader(self) -> DataLoader:
+    def train_dataloader(self):
         return DataLoader(
-            self.train_dataset,
+            self.train_ds,
             batch_size=self.hparams.batch_size,
             shuffle=True,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
-            drop_last=self.hparams.drop_last,  # Required: avoid single-sample batches crashing BN
+            drop_last=self.hparams.drop_last,
             persistent_workers=self.hparams.num_workers > 0,
         )
 
-    def val_dataloader(self) -> DataLoader:
+    def val_dataloader(self):
+        if not hasattr(self, "val_ds") or self.val_ds is None:
+            return None
         return DataLoader(
-            self.val_dataset,
-            batch_size=self.hparams.batch_size,
+            self.val_ds,
+            batch_size=self.hparams.batch_size * 2,
             shuffle=False,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             drop_last=False,
         )
-
-    @staticmethod
-    def _default_val_transform():
-        return T.Compose([
-            T.Resize(256),
-            T.CenterCrop(224),
-            T.ToTensor(),
-            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
 ```
 
-### Critical Design Decisions
-
-**`drop_last=True` for training:** Single-element batches crash BatchNorm. For SSL, batch size stability also matters for the contrastive loss (BYOL shows instability with very small batches).
-
-**`persistent_workers=True` when `num_workers > 0`:** Avoids re-spawning worker processes at each epoch. This is a meaningful speedup for ImageFolder with many small files.
-
-**Transform injection, not subclassing:** Do NOT subclass `SSLDataModule` per method. The transform encapsulates augmentation logic; the DataModule is method-agnostic. This keeps the `data/` module clean.
-
-**Multi-resolution methods (DINO, SwAV):** Their transforms return a list of tensors with different spatial dimensions. The DataLoader `collate_fn` must handle this. Use a custom collate:
+### MultiViewDataset Wrapper
 
 ```python
-def multicrop_collate(batch):
-    # batch: list of (list_of_views, label)
-    views_per_sample = [item[0] for item in batch]
-    labels = torch.tensor([item[1] for item in batch])
-    # Transpose: group views by index across the batch
-    num_views = len(views_per_sample[0])
-    views = [torch.stack([v[i] for v in views_per_sample]) for i in range(num_views)]
-    return views, labels
+# data/multi_view_dataset.py
+from torch.utils.data import Dataset
+
+
+class MultiViewDataset(Dataset):
+    """
+    Wraps any Dataset and applies a multi-view transform in __getitem__.
+
+    The transform must return a tuple of tensors (the views).
+    Labels from the underlying dataset are preserved.
+
+    Separating view generation from the LightningModule is critical:
+    it allows the same method to be evaluated with different augmentation
+    strategies without changing the model code.
+    """
+
+    def __init__(self, dataset: Dataset, transform):
+        self.dataset = dataset
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        img, label = self.dataset[idx]
+        views = self.transform(img)     # returns (view1, view2) or more
+        return views, label
+
+    def __len__(self):
+        return len(self.dataset)
 ```
 
-**CIFAR-10/100 defaults:** For fast iteration and tutorial use, expose a `from_cifar10(cls, ...)` classmethod that sets the right image size (32), normalization, and no resize. This enables smoke tests and notebook demos without downloading ImageNet.
+### Non-Negotiable DataModule Constraints
+
+**`drop_last=True` is required.** NT-Xent breaks with a partial batch (batch_size=1 has 0 negatives). BatchNorm in the projector produces incorrect statistics with a single-sample batch, causing NaN loss or silent training failure.
+
+**`val_split` vs. separate val directory.** ImageFolder-style datasets typically have `train/` and `val/` at the same root. `SSLDataModule` should check for `{data_dir}/val` first; fall back to a random `val_split` only if absent. STL-10 is the canonical SSL benchmark: 100K unlabeled images for training, 5K labeled for evaluation.
+
+**`persistent_workers=True`** prevents worker process respawn between epochs. Measurable speedup when `num_workers >= 4`.
+
+**Recommended configurations:**
+
+| Scenario | dataset_name | batch_size | num_workers |
+|----------|-------------|------------|-------------|
+| Laptop smoke test | "cifar10" | 64 | 2 |
+| STL-10 SSL | (data_dir) | 256 | 8 |
+| ImageNet-100 | (data_dir) | 512 | 16 |
+| Custom ImageFolder | (data_dir) | 256 | 8 |
 
 ---
 
 ## Testing Strategy
 
-### Core Principle: Smoke Tests for All Methods, Unit Tests for Loss Functions
+### Layered Test Pyramid
 
-The most common failure mode in a multi-method SSL repo is a new method silently producing `nan` loss, wrong output shapes, or including the momentum encoder in the optimizer. Smoke tests catch all of these without needing real data or real training.
+For a 15+ method tutorial repo, tests follow four layers:
 
-### Test Structure
+| Layer | Scope | Lightning Flag | CI Trigger |
+|-------|-------|---------------|-----------|
+| **Smoke** | 1 batch, no assert on values | `fast_dev_run=True` | Every commit |
+| **Shape** | Output tensor shapes correct | None (unit test) | Every commit |
+| **Sanity** | Loss finite, no collapse in 2 epochs | `max_epochs=2, limit_train_batches=5` | PR |
+| **Integration** | Pretrain → kNN eval runs end-to-end | Full run on tiny data | Nightly |
 
-**`tests/conftest.py` — Shared Fixtures**
+### Shared Fixtures (conftest.py)
 
 ```python
+# tests/conftest.py
 import pytest
 import torch
 import timm
+import lightning as L
+
 
 @pytest.fixture(scope="session")
 def tiny_backbone():
-    """ResNet-18 with num_classes=0. Used for all method smoke tests."""
-    model = timm.create_model("resnet18", pretrained=False, num_classes=0)
-    return model
+    """ResNet-18, no classifier head. session-scoped for speed across all test files."""
+    backbone = timm.create_model("resnet18", num_classes=0, pretrained=False)
+    return backbone, backbone.num_features
+
 
 @pytest.fixture
 def tiny_batch():
-    """Batch of 4 images at 32x32. Fast enough for CPU-only CI."""
-    return torch.randn(4, 3, 32, 32)
+    """4 images at 32x32, 2 views each. Sufficient for all methods."""
+    B, C, H, W = 4, 3, 32, 32
+    view1 = torch.randn(B, C, H, W)
+    view2 = torch.randn(B, C, H, W)
+    labels = torch.randint(0, 10, (B,))
+    return [view1, view2], labels
+
 
 @pytest.fixture
-def two_views(tiny_batch):
-    """Standard 2-view SSL batch."""
-    return [tiny_batch, tiny_batch.clone()]
+def fast_trainer():
+    """Runs 1 train batch. Pure smoke test — disables all logging and checkpointing."""
+    return L.Trainer(
+        fast_dev_run=True,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+    )
+
+
+@pytest.fixture
+def sanity_trainer():
+    """Runs 2 epochs x 5 batches. Catches NaN loss and collapse within seconds."""
+    return L.Trainer(
+        max_epochs=2,
+        limit_train_batches=5,
+        limit_val_batches=2,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+    )
 ```
 
-**`tests/test_methods.py` — Parametrized Smoke Test**
+### Per-Method Test Template
 
 ```python
-import pytest
+# tests/test_simclr.py
 import torch
-from methods import METHOD_REGISTRY
+import pytest
+from methods.simclr import SimCLR
 
-ALL_METHODS = list(METHOD_REGISTRY.keys())
 
-@pytest.mark.parametrize("method_name", ALL_METHODS)
-def test_method_forward_no_crash(method_name, tiny_backbone, two_views):
-    """Every method must run a forward pass without crashing."""
-    MethodClass = METHOD_REGISTRY[method_name]
-    model = MethodClass.from_tiny_config(tiny_backbone)  # factory with small dims
-    feats, proj = model(two_views)
-    assert feats.shape[0] == 4, "Batch dimension preserved"
-    assert not torch.isnan(proj).any(), f"{method_name}: NaN in projections"
-    assert not torch.isinf(proj).any(), f"{method_name}: Inf in projections"
+@pytest.mark.smoke
+def test_simclr_smoke(tiny_backbone, fast_trainer, tmp_path):
+    """One forward + backward pass completes without error."""
+    backbone, feat_dim = tiny_backbone
+    model = SimCLR(
+        backbone=backbone, feat_dim=feat_dim, lr=1e-3, weight_decay=1e-6,
+        max_epochs=100, temperature=0.07, proj_out_dim=128,
+    )
+    from data.datamodule import SSLDataModule
+    dm = SSLDataModule(dataset_name="cifar10", batch_size=4, num_workers=0,
+                       transform=SimCLR.default_transform())
+    fast_trainer.fit(model, datamodule=dm)
 
-@pytest.mark.parametrize("method_name", ALL_METHODS)
-def test_training_step_returns_scalar_loss(method_name, tiny_backbone, two_views):
-    """training_step must return a scalar tensor (Lightning requirement)."""
-    MethodClass = METHOD_REGISTRY[method_name]
-    model = MethodClass.from_tiny_config(tiny_backbone)
-    fake_batch = (two_views, torch.zeros(4, dtype=torch.long))
-    loss = model.training_step(fake_batch, batch_idx=0)
-    assert loss.ndim == 0, f"{method_name}: loss must be scalar"
-    assert not torch.isnan(loss), f"{method_name}: NaN loss"
 
-@pytest.mark.parametrize("method_name", ALL_METHODS)
-def test_momentum_encoder_excluded_from_optimizer(method_name, tiny_backbone):
-    """Methods with EMA encoders must NOT include them in learnable_params."""
-    MethodClass = METHOD_REGISTRY[method_name]
-    model = MethodClass.from_tiny_config(tiny_backbone)
-    optimizer_param_ids = {
-        id(p) for group in model.learnable_params for p in group["params"]
-    }
-    # Check that EMA params (requires_grad=False) are not in the optimizer
-    ema_attrs = ["backbone_ema", "projector_ema", "encoder_ema"]
-    for attr in ema_attrs:
-        if hasattr(model, attr):
-            ema_module = getattr(model, attr)
-            for p in ema_module.parameters():
-                assert id(p) not in optimizer_param_ids, (
-                    f"{method_name}: EMA param found in optimizer — will corrupt training"
-                )
+@pytest.mark.smoke
+def test_simclr_output_shapes(tiny_backbone, tiny_batch):
+    """forward() returns h and z with correct shapes."""
+    backbone, feat_dim = tiny_backbone
+    model = SimCLR(backbone=backbone, feat_dim=feat_dim, lr=1e-3, weight_decay=1e-6,
+                   max_epochs=100, temperature=0.07, proj_out_dim=128)
+    views, _ = tiny_batch
+    out = model.forward(views[0])
+    assert out["h"].shape == (4, feat_dim)
+    assert out["z"].shape == (4, 128)
+
+
+@pytest.mark.sanity
+def test_simclr_loss_finite(tiny_backbone, tiny_batch):
+    """Loss is a finite positive scalar."""
+    backbone, feat_dim = tiny_backbone
+    model = SimCLR(backbone=backbone, feat_dim=feat_dim, lr=1e-3, weight_decay=1e-6,
+                   max_epochs=100, temperature=0.07, proj_out_dim=128)
+    views, labels = tiny_batch
+    outputs = {"z": [model.forward(v)["z"] for v in views]}
+    loss = model.ssl_loss(outputs, (views, labels))
+    assert torch.isfinite(loss), f"Loss is not finite: {loss.item()}"
+    assert loss.item() > 0, "Loss should be positive"
+
+
+@pytest.mark.sanity
+def test_simclr_no_collapse(tiny_backbone, tiny_batch):
+    """Embeddings have non-trivial variance (not constant output)."""
+    backbone, feat_dim = tiny_backbone
+    model = SimCLR(backbone=backbone, feat_dim=feat_dim, lr=1e-3, weight_decay=1e-6,
+                   max_epochs=100, temperature=0.07, proj_out_dim=128)
+    views, _ = tiny_batch
+    with torch.no_grad():
+        z = model.forward(views[0])["z"]
+    std = z.std(dim=0).mean().item()
+    assert std > 1e-4, f"Embeddings appear collapsed: per-dim std = {std:.6f}"
 ```
 
-### The `from_tiny_config` Factory Pattern
+### pytest Markers Configuration
 
-Each method class should implement a `from_tiny_config` classmethod that builds a minimal instance for testing:
-
-```python
-class SimCLRModule(BaseSSLMethod):
-    @classmethod
-    def from_tiny_config(cls, backbone):
-        return cls(
-            backbone=backbone,
-            proj_hidden_dim=64,
-            proj_out_dim=32,
-            temperature=0.07,
-            lr=1e-3,
-            weight_decay=1e-4,
-            max_epochs=2,
-            warmup_epochs=1,
-        )
+```toml
+# pyproject.toml
+[tool.pytest.ini_options]
+markers = [
+    "smoke: fast smoke tests using fast_dev_run=True (always run, < 30s total)",
+    "sanity: 2-epoch sanity checks (run on PR, < 5min total)",
+    "slow: full integration tests (run nightly)",
+]
 ```
 
-This pattern means tests never need real configs; they instantiate directly with known-small dimensions. It's the ML equivalent of a "unit test with mocks."
+CI pipeline runs `pytest -m smoke` on every push (< 2 minutes on CPU), and `pytest -m smoke or sanity` on PRs.
 
-### Loss Function Unit Tests
+### What NOT to Assert in Tests
 
-Loss functions are pure math — they should be unit tested with known inputs:
-
-```python
-def test_ntxent_identical_views_is_log_2N():
-    """NT-Xent on identical views: each pos pair has exp(1/tau) in numerator and denominator."""
-    from losses.ntxent import NTXentLoss
-    loss_fn = NTXentLoss(temperature=1.0)
-    z = torch.nn.functional.normalize(torch.eye(4), dim=1)  # 4 orthogonal vectors
-    # When z1 == z2 and all pairs are orthogonal, loss should be predictable
-    loss = loss_fn(z, z)
-    assert torch.isfinite(loss), "NT-Xent must be finite for orthogonal embeddings"
-
-def test_ntxent_collapsed_embeddings_high_loss():
-    """Constant embeddings (collapse) should produce maximum possible loss."""
-    from losses.ntxent import NTXentLoss
-    loss_fn = NTXentLoss(temperature=0.07)
-    z_collapsed = torch.ones(8, 128)  # all identical
-    loss = loss_fn(z_collapsed, z_collapsed)
-    # After normalization, cos-sim = 1 for all pairs; loss ≈ log(2N)
-    assert loss.item() > 4.0, "Collapsed embeddings should yield high NT-Xent loss"
-```
-
-### CI Configuration
-
-Run smoke tests on every push with a tiny model on CPU. Full training is never part of CI — that would require a GPU and hours. The test suite should complete in under 60 seconds:
-
-```yaml
-# .github/workflows/test.yml
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - run: pip install -e ".[dev]"
-      - run: pytest tests/ -x -q --timeout=120
-```
+Do not assert that `val/acc_top1` reaches a specific threshold — this requires full training and is not reproducible on CPU. Do not assert exact loss values — they depend on random initialization and batch sampling. Do not write `assert loss < some_threshold` — correct SSL loss values are batch-size-dependent and method-specific. Test structure and finiteness, not magnitude.
 
 ---
 
 ## Documentation Patterns
 
-### Docstring Standard: NumPy Style with Paper References
+### Docstring Standard: NumPy Style with Mandatory References Section
 
-The NumPy docstring format is used by scikit-learn, PyTorch, and most ML research libraries. It renders cleanly in IDEs (VS Code, PyCharm) and with Sphinx. Use it consistently across all files.
-
-The critical addition for a tutorial repo is the `References` section that ties every non-obvious line back to the paper that introduced it.
+NumPy docstrings are the standard for scientific Python (NumPy, SciPy, scikit-learn, PyTorch). They render correctly with Sphinx + numpydoc and are readable in plain text terminals. For a tutorial repo, every method class docstring must include a **References** section that links to the original paper.
 
 ```python
-class BYOLModule(BaseSSLMethod):
+class SimCLR(BaseSSLMethod):
     """
-    Bootstrap Your Own Latent (BYOL) — self-supervised learning without negatives.
+    SimCLR: A Simple Framework for Contrastive Learning of Visual Representations.
 
-    BYOL trains an online network to predict the output of a target network given
-    different augmented views of the same image. The target network is an
-    exponential moving average (EMA) of the online network. No negative samples
-    are used.
+    Chen et al. (ICML 2020) showed that contrastive learning with a projection head,
+    large batch size, and strong augmentation produces representations competitive
+    with supervised baselines. NT-Xent loss maximizes agreement between two augmented
+    views of the same image while pushing apart representations of different images.
 
-    Architecture:
-      - Online network: backbone -> projector -> predictor
-      - Target network: backbone_ema -> projector_ema (no predictor, stop-gradient)
-
-    The key insight: the predictor head + stop-gradient creates an implicit
-    asymmetry that prevents trivial collapse despite having no negatives.
-    See Appendix F of the paper for the theoretical analysis.
+    Key design choices in this implementation:
+    - 3-layer MLP projector (paper uses 2-layer; 3-layer is stronger per SimCLR v2 [2])
+    - Temperature τ = 0.07 (paper default)
+    - Symmetric loss: loss(z1, z2) + loss(z2, z1)
+    - No momentum encoder, no memory bank — batch negatives only
 
     Parameters
     ----------
-    backbone_name : str
-        timm model name, e.g. "resnet50".
-    momentum : float
-        EMA decay for the target network. Paper uses 0.996, increased to 0.9999
-        over training via cosine schedule (see paper Section 3.1).
-    proj_hidden_dim : int
-        Hidden dimension of both projector and predictor MLP. Default: 4096.
-    proj_out_dim : int
-        Output dimension of projector and predictor. Default: 256.
+    backbone : nn.Module
+        Feature extractor. Any timm backbone with num_classes=0.
+    feat_dim : int
+        Backbone output dimension (use backbone.num_features).
+    temperature : float, optional
+        NT-Xent temperature τ. Default 0.07. Lower = sharper distribution
+        and harder negatives. Typical range: [0.05, 0.2].
+    proj_out_dim : int, optional
+        Projector output dimension. Default 128. SimCLR v2 uses 256.
+    proj_hidden_dim : int, optional
+        Projector hidden dimension. Default 2048.
 
     Notes
     -----
-    The loss is the mean squared error between L2-normalized predictions and
-    L2-normalized target projections, equivalent to 2 - 2 * cos_sim(p, z.detach()):
+    The projection head is discarded after pretraining. Downstream evaluations
+    use backbone features ``h``, not projected ``z``.
 
-    .. math::
-        \\mathcal{L} = 2 - 2 \\cdot \\frac{\\langle p_\\theta, z_\\xi \\rangle}
-                         {\\|p_\\theta\\|_2 \\cdot \\|z_\\xi\\|_2}
-
-    where p_theta is the online predictor output and z_xi is the target projector
-    output with stop-gradient applied (detach).
+    SimCLR requires batch_size >= 256 for sufficient negatives. With
+    batch_size=256 you have 510 negatives per anchor (2 * 256 - 2).
 
     References
     ----------
-    .. [1] Grill, J.B. et al. "Bootstrap Your Own Latent: A New Approach to
-           Self-Supervised Learning." NeurIPS 2020.
-           https://arxiv.org/abs/2006.07733
-    .. [2] Appendix F: analysis of why the predictor prevents collapse.
+    .. [1] Chen, T., Kornblith, S., Norouzi, M., & Hinton, G. (2020).
+           A simple framework for contrastive learning of visual representations.
+           ICML 2020. https://arxiv.org/abs/2002.05709
+
+    .. [2] Chen, T., Kornblith, S., Sohl-Dickstein, J., & Hinton, G. (2020).
+           Big self-supervised models are strong semi-supervised learners.
+           NeurIPS 2020. https://arxiv.org/abs/2006.10029
+
+    Examples
+    --------
+    >>> import timm
+    >>> backbone = timm.create_model("resnet50", num_classes=0, pretrained=False)
+    >>> model = SimCLR(
+    ...     backbone=backbone,
+    ...     feat_dim=backbone.num_features,
+    ...     temperature=0.07,
+    ...     lr=3e-4,
+    ...     weight_decay=1e-6,
+    ...     max_epochs=200,
+    ... )
     """
 ```
 
-### Inline Comments: Equation Anchors
+### Inline Comment Pattern: Paper-Equation Anchors
 
-For non-obvious mathematical operations, add a comment anchoring to the paper equation:
+Every non-obvious line in loss functions should cite the paper equation:
 
 ```python
-# Eq. 3 in Chen et al. (2020): symmetric NT-Xent loss
-loss = (ntxent(z1, z2) + ntxent(z2, z1)) / 2
+def ssl_loss(self, outputs, batch):
+    z1, z2 = outputs["z"]  # [B, D] each
 
-# Barlow Twins Eq. 1: cross-correlation matrix C = Z^T Z / N
-# normalized so diagonal = 1 means max correlation, off-diagonal = 0 means decorrelated
-C = (z1.T @ z2) / batch_size
+    # L2-normalize before cosine similarity (Chen 2020, Sec 2, Eq. 1)
+    z1 = nn.functional.normalize(z1, dim=1)
+    z2 = nn.functional.normalize(z2, dim=1)
 
-# BYOL stop-gradient: z_target must NOT receive gradients
-# This is the mechanism that prevents trivial collapse (Grill et al. 2020, Appendix F)
-z_target = self.forward_target(view2).detach()
+    # Similarity matrix [2B, 2B] -- both views concatenated
+    z = torch.cat([z1, z2], dim=0)
+    sim = torch.mm(z, z.T) / self.hparams.temperature
+
+    # Mask diagonal (self-similarity is not a valid negative pair)
+    B = z1.shape[0]
+    mask = torch.eye(2 * B, dtype=torch.bool, device=z.device)
+    sim.masked_fill_(mask, float("-inf"))
+
+    # Positive pairs: (i, i+B) and (i+B, i) -- symmetric formulation (Chen 2020, Eq. 2)
+    labels = torch.cat([torch.arange(B, 2 * B), torch.arange(B)]).to(z.device)
+    loss = nn.functional.cross_entropy(sim, labels)
+    return loss
 ```
 
-### Per-Method README Sections
+### README / Notebook Method Section Structure
 
-Each method in `methods/` should have a docstring preamble that works as a self-contained explanation. Structure:
+Each method gets a section (or notebook cell group) following this order:
 
-1. **What it is** (1 sentence)
-2. **What problem it solves** (compared to prior method)
-3. **Key mechanism** (the one algorithmic insight)
-4. **Architecture diagram** (ASCII or description)
-5. **Critical hyperparameters** (temperature, momentum, etc.)
-6. **Paper reference** (arxiv link, venue, year)
+1. **What problem does this method solve?** Plain English, one paragraph, no math.
+2. **The core idea.** One diagram or the key equation, cited to the paper.
+3. **Key implementation components.** Bulleted list with file links.
+4. **Run command.** Copy-pasteable one-liner.
+5. **Expected behavior.** What the loss curve looks like, what kNN accuracy is reasonable.
 
-### Repository-Level README
-
-```
-README.md structure:
-1. Overview (2 paragraphs: what this is, who it's for)
-2. Methods table (name, year, paper link, key contribution, status)
-3. Quick start (clone, install, run SimCLR in <5 commands)
-4. Directory structure (annotated tree — 20 lines)
-5. How to add a new method (5-step guide pointing to base.py)
-6. Evaluation (how to run linear probe, KNN, UMAP)
-7. Citation guidance
-```
-
-The methods table in the README is the highest-value piece of documentation for a tutorial repo. It lets a reader immediately navigate to what they're looking for:
-
-| Method | Year | Venue | Paradigm | Paper | Code |
-|--------|------|-------|----------|-------|------|
-| Instance Discrimination | 2018 | CVPR | Memory bank | [Wu et al.](https://arxiv.org/abs/1805.01978) | `methods/instance_discrimination.py` |
-| SimCLR | 2020 | ICML | Contrastive | [Chen et al.](https://arxiv.org/abs/2002.05709) | `methods/simclr_v1.py` |
-| BYOL | 2020 | NeurIPS | EMA, no negatives | [Grill et al.](https://arxiv.org/abs/2006.07733) | `methods/byol.py` |
-| ... | | | | | |
+This "theory → implementation → run" structure is the pattern used by the UvA Deep Learning course tutorials (the most cited single-method SSL tutorial in the community).
 
 ---
 
 ## Logging & Metrics
 
-### What to Log (and Why)
+### What to Log During Pretraining
 
-Standard pretraining run should log these metrics to TensorBoard (included in Lightning) or W&B:
+**Every step (on_step=True):**
 
-**Loss metrics (log every step with `on_step=True, on_epoch=True`):**
+| Key | Why |
+|-----|-----|
+| `train/loss` | Primary signal; confirms training is progressing |
+| `train/lr` | Confirms warmup and cosine decay are working |
+
+**Every epoch (on_epoch=True):**
+
+| Key | How to Compute | What It Tells You |
+|-----|---------------|------------------|
+| `train/embed_std_mean` | `z.std(dim=0).mean()` | Total collapse → approaches 0 |
+| `train/embed_std_min` | `z.std(dim=0).min()` | Dimensional collapse → one dim near 0 |
+| `train/embed_eff_rank` | Fraction of singular values > 1% of max | Rank drop → dimensional collapse |
+| `train/grad_norm` | L2 norm of all parameter gradients | Spikes indicate instability |
+| `val/knn_acc_top1` | KNNEvalCallback (k=20) | Best label-free quality proxy |
+
+**For VICReg specifically, decompose the loss:**
+
 ```python
-self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-self.log("train/lr", self.optimizers().param_groups[0]["lr"], on_step=True)
+self.log("train/vicreg_invariance", loss_inv)   # should decrease
+self.log("train/vicreg_variance",   loss_var)   # should stay near 0 (variance enforced)
+self.log("train/vicreg_covariance", loss_cov)   # should decrease toward 0
 ```
 
-**Collapse detection (log every epoch, `on_epoch=True`):**
+This decomposition is essential for debugging VICReg: if `loss_var` is large, the variance term is not being satisfied and collapse risk is high.
 
-The single most useful diagnostic for SSL training is the standard deviation of embeddings across the batch. Collapse shows as `std_z → 0`:
+### Collapse Detection Reference Implementation
+
+This helper belongs in `BaseSSLMethod` and is called from `on_train_epoch_end` with the last batch's embeddings:
 
 ```python
-def training_step(self, batch, batch_idx):
-    views, _ = batch
-    feats, z = self.forward(views)
-    loss = self.compute_loss(z)
+def _log_embedding_health(self, z: torch.Tensor):
+    """
+    Log collapse detection metrics for a batch of embeddings z [B, D].
 
-    # Collapse detection: std across batch for each dimension, then mean
-    # Healthy range: > 0.1. Collapsing: < 0.01 within first 2 epochs.
+    Per-dimension std is the canonical VICReg variance monitoring metric [1].
+    Effective rank tracks dimensional collapse [2].
+
+    References
+    ----------
+    .. [1] Bardes et al. (2022). VICReg. https://arxiv.org/abs/2105.04906
+    .. [2] Understanding Dimensional Collapse. OpenReview 2022.
+    """
     with torch.no_grad():
-        z_norm = torch.nn.functional.normalize(z, dim=1)
-        std_z = z_norm.std(dim=0).mean()
-        self.log("train/std_z", std_z, on_epoch=True)
-
-    self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-    return loss
+        z_std = z.std(dim=0)                          # [D]
+        self.log("train/embed_std_mean", z_std.mean())
+        self.log("train/embed_std_min",  z_std.min())
+        # Effective rank: how many singular values carry significant energy
+        _, s, _ = torch.linalg.svd(z - z.mean(dim=0), full_matrices=False)
+        eff_rank = (s > 0.01 * s[0]).sum().float()
+        self.log("train/embed_eff_rank", eff_rank)
 ```
 
-**Effective rank (log every N epochs, computationally expensive):**
+### kNN Evaluation Callback
 
-RankMe (Garrido et al., ICML 2023) provides a label-free proxy for downstream performance. Log it every 10 epochs by accumulating a feature bank and computing the entropy of the singular value distribution:
+Online kNN evaluation is the best label-free quality proxy (r = 0.96 with out-of-domain kNN accuracy across 26 SSL models, IJCV 2025). Run it as a Lightning callback every N epochs to track representation quality without any labeled data.
 
 ```python
-def on_validation_epoch_end(self):
-    if self.current_epoch % 10 == 0 and hasattr(self, "_val_features"):
-        features = torch.cat(self._val_features, dim=0)
-        # Effective rank = exp(entropy of normalized singular values)
-        # See RankMe: Garrido et al. ICML 2023
-        _, s, _ = torch.linalg.svd(features, full_matrices=False)
-        s = s / s.sum()
-        effective_rank = torch.exp(-(s * torch.log(s + 1e-8)).sum())
-        self.log("val/effective_rank", effective_rank)
-        self._val_features = []
+# eval/knn_eval.py
+from lightning.pytorch.callbacks import Callback
+import torch, torch.nn.functional as F
+
+
+class KNNEvalCallback(Callback):
+    """
+    Evaluates backbone representations with a weighted k-NN classifier
+    at the end of each epoch. Requires a labeled val_dataloader.
+
+    Parameters
+    ----------
+    k : int
+        Number of nearest neighbors. Default 20.
+    temperature : float
+        Softmax temperature for weighted kNN. Default 0.07.
+    every_n_epochs : int
+        Run kNN eval every N epochs. Default 5 (avoids overhead each epoch).
+    """
+
+    def __init__(self, k: int = 20, temperature: float = 0.07,
+                 every_n_epochs: int = 5):
+        self.k = k
+        self.temperature = temperature
+        self.every_n_epochs = every_n_epochs
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        if trainer.current_epoch % self.every_n_epochs != 0:
+            return
+        # Collect train and val embeddings, run kNN, log accuracy
+        ...
 ```
 
-**Learning rate (log every step):** Critical for diagnosing warmup issues. A missing warmup or wrong max_lr is a common failure mode.
+### Logging Infrastructure
 
-**Gradient norms (log every 50 steps):** Gradient explosion early in training is often the cause of NaN losses. Log the global gradient norm:
+Use TensorBoard as the default (zero extra dependencies, built into Lightning). Add WandB as an opt-in:
 
 ```python
-def on_before_optimizer_step(self, optimizer):
-    # Log global grad norm every 50 steps
-    if self.global_step % 50 == 0:
-        norms = [p.grad.norm() for p in self.parameters() if p.grad is not None]
-        if norms:
-            global_norm = torch.stack(norms).norm()
-            self.log("train/grad_norm", global_norm)
+# scripts/pretrain.py
+if cfg.logger == "wandb":
+    logger = WandbLogger(project="ssl-tutorial", name=cfg.run_name)
+else:
+    logger = TensorBoardLogger("logs/", name=cfg.run_name)
 ```
 
-**EMA momentum value (for BYOL/MoCo):** Some papers schedule momentum from 0.996 → 0.9999 over training. Log the current value to verify the schedule is applying:
-
-```python
-self.log("train/ema_momentum", self.hparams.momentum)
-```
-
-### Recommended Metric Summary
-
-| Metric | Name | Frequency | Purpose |
-|--------|------|-----------|---------|
-| Training loss | `train/loss` | Every step | Core convergence signal |
-| Learning rate | `train/lr` | Every step | Diagnose warmup/schedule issues |
-| Embedding std | `train/std_z` | Every epoch | Detect collapse immediately (std → 0) |
-| Effective rank | `val/effective_rank` | Every 10 epochs | Label-free quality proxy (RankMe) |
-| Gradient norm | `train/grad_norm` | Every 50 steps | Detect explosion before NaN |
-| EMA momentum | `train/ema_momentum` | Every epoch | Verify schedule for BYOL/MoCo |
-| Val loss | `val/loss` | Every epoch | Generalization check (if val split exists) |
-
-### Lightning Logging Pattern (Verified for 2.x)
-
-```python
-# CORRECT: log scalar from training_step
-self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-
-# CORRECT: log non-scalar (histogram of embedding values) via logger directly
-if self.logger and hasattr(self.logger, "experiment"):
-    self.logger.experiment.add_histogram("embeddings", z, self.global_step)
-
-# WRONG: calling self.metric.compute() AND logging the metric object in same step
-# This resets the metric between calls — produces nonsense values
-```
-
-**`sync_dist=True`** is required for multi-GPU DDP training. For single-GPU tutorials, it's a no-op but harmless to include — better to make it a habit.
+**What NOT to log:** Raw embedding tensors per step (enormous storage), confusion matrices during pretraining (labels are not used), per-sample loss values (redundant with mean loss).
 
 ---
 
 ## Recommended Implementation Order
 
-The 15+ methods should be implemented in curriculum order — each phase introduces one new algorithmic concept. A reader who works through them sequentially understands the full evolution of the field.
+Build methods in this order. Each group introduces one new infrastructure concept. Later methods reuse infrastructure from earlier ones without modification.
 
-### Phase 1: Foundation (The Loss Function Era)
+### Group 1: Foundation (build the scaffolding here)
 
-Implement the scaffolding + the 3 foundational methods that define the core concepts:
+| # | Method | New Infrastructure | Reuses |
+|---|--------|-------------------|--------|
+| 1 | **SimCLR** | BaseSSLMethod, SSLDataModule, MultiViewDataset, KNNEvalCallback, NT-Xent loss | — |
+| 2 | **Instance Discrimination** | Memory bank pattern, NCE loss | BaseSSLMethod, backbone, NT-Xent variant |
 
-1. `BaseSSLMethod` + `SSLDataModule` + test infrastructure
-2. **Instance Discrimination** (Wu et al., CVPR 2018) — memory bank, NCE loss, temperature
-3. **Invariant Spread** (Ye et al., CVPR 2019) — in-batch negatives, no memory bank
-4. **CPC** (van den Oord et al., 2018) — InfoNCE loss (the loss all later methods derive from)
+Start with SimCLR because it has no moving parts (no momentum encoder, no predictor, no queue). It exercises the entire infrastructure stack with the simplest possible method. Once SimCLR works end-to-end with kNN evaluation, all subsequent methods plug into the same scaffolding.
 
-**Why this order:** Instance Discrimination establishes the core SSL problem. CPC introduces InfoNCE. These two together explain every contrastive method that follows.
+### Group 2: Momentum Encoder
 
-### Phase 2: Scaling Contrastive Learning
+| # | Method | New Infrastructure | Reuses |
+|---|--------|-------------------|--------|
+| 3 | **MoCo v1** | BaseMomentumMethod, FIFO queue | NT-Xent loss |
+| 4 | **MoCo v2** | Stronger augmentation only (SimCLR-style) | MoCo v1 — minimal delta |
+| 5 | **CMC** | Two encoders, multi-view from different channels | BaseMomentumMethod |
 
-5. **CMC** (Tian et al., 2019) — multi-view / multi-modal extension
-6. **MoCo v1** (He et al., CVPR 2020) — momentum contrast, fixed-size queue replaces memory bank
-7. **SimCLR v1** (Chen et al., ICML 2020) — large batch, projection head, NT-Xent loss
-8. **MoCo v2** (Chen et al., 2020) — MoCo + SimCLR augmentations + projection head
+Introduce `BaseMomentumMethod` with MoCo v1. All subsequent momentum methods (BYOL, DINO, iBOT) get the EMA infrastructure for free.
 
-**Why this order:** MoCo solves the stale-negatives problem. SimCLR shows batch size matters. MoCo v2 shows they're complementary.
+### Group 3: No-Negatives
 
-### Phase 3: Eliminating Negatives
+| # | Method | New Infrastructure | Reuses |
+|---|--------|-------------------|--------|
+| 6 | **BYOL** | Predictor head, stop-gradient, collapse detection logging | BaseMomentumMethod |
+| 7 | **SimSiam** | Stop-gradient without EMA (same predictor, no momentum) | BYOL predictor pattern |
 
-9. **BYOL** (Grill et al., NeurIPS 2020) — EMA teacher, predictor, no negatives
-10. **SimSiam** (Chen & He, CVPR 2021) — no EMA, stop-gradient only
-11. **Barlow Twins** (Zbontar et al., ICML 2021) — cross-correlation redundancy reduction
+Implement BYOL before SimSiam. SimSiam is pedagogically "BYOL minus the momentum encoder." The conceptual relationship is clearer in this order. Add `_log_embedding_health` here — BYOL collapse is the canonical demonstration.
 
-**Why this order:** BYOL is the breakthrough. SimSiam strips it to the minimum. Barlow Twins takes a completely different approach (information theory) but reaches the same destination.
+### Group 4: Clustering and Redundancy-Reduction
 
-### Phase 4: Clustering and Multi-Crop
+| # | Method | New Infrastructure | Reuses |
+|---|--------|-------------------|--------|
+| 8 | **SwAV** | Prototype assignments, Sinkhorn-Knopp, multi-crop | DINOTransform multi-crop |
+| 9 | **Barlow Twins** | Cross-correlation matrix loss | BaseSSLMethod, two-view aug |
+| 10 | **VICReg** | Variance + invariance + covariance loss | Barlow Twins projector |
 
-12. **Deep Cluster** (Caron et al., ECCV 2018) — k-means as pseudo-labels
-13. **SwAV** (Caron et al., NeurIPS 2020) — online clustering, multi-crop
-14. **SupCon** (Khosla et al., NeurIPS 2020) — supervised extension of contrastive
+Barlow Twins before VICReg. VICReg is partially motivated as a simpler variant of Barlow Twins — the cross-correlation loss and the covariance loss share the same motivation (decorrelation).
 
-**Why this order:** Deep Cluster is the predecessor. SwAV is the modern synthesis. SupCon closes the loop by bringing labels back in.
+### Group 5: Historical Proxy Tasks
 
-### Phase 5: Transformer Era
+| # | Method | New Infrastructure | Reuses |
+|---|--------|-------------------|--------|
+| 11 | **Invariant Spread** | In-batch softmax, single augmented view | SimCLR NT-Xent |
+| 12 | **CPC** | Autoregressive prediction, grid patch encoder | Separate PixelConv encoder |
+| 13 | **AMDIM** | Multi-scale feature prediction | CPC patch encoder |
 
-15. **MoCo v3** (Chen et al., ICCV 2021) — contrastive + ViT backbone
-16. **DINO** (Caron et al., ICCV 2021) — self-distillation, multi-crop, ViT features
-17. **SimCLR v2** / **InfoMin** — scaling and data-efficiency variants
+These are valuable for historical context. They can be implemented in any order and don't share infrastructure with Groups 3–4.
 
-**Why this phase last:** ViT-based methods require larger compute and introduce transformer-specific concerns (patch embedding, CLS token vs. patch average). They build on all previous concepts.
+### Group 6: ViT-Native Methods
 
-### Implementation Priority Rule
+| # | Method | New Infrastructure | Reuses |
+|---|--------|-------------------|--------|
+| 14 | **MoCo v3** | ViT backbone config, no memory queue | BaseMomentumMethod, NT-Xent |
+| 15 | **DINO** | Centering, softmax sharpening, DINOTransform multi-crop | BaseMomentumMethod |
+| 16 | **MAE** | Encoder-decoder ViT, patch masking, reconstruction loss | Separate MAE architecture |
+| 17 | **iBOT** | DINO + MAE objectives combined | DINO + MAE |
 
-If forced to ship only 6 methods, implement: Instance Discrimination, MoCo v1, SimCLR v1, BYOL, Barlow Twins, DINO. These six span all major paradigm shifts (memory bank → queue → large batch → no negatives → redundancy reduction → self-distillation).
+MoCo v3 before DINO. DINO's centering and sharpening are easier to understand after confirming that a simple momentum contrastive method already works well with ViT backbones.
+
+MAE is architecturally self-contained (needs encoder-decoder ViT). Implement it independently; it does not inherit from `BaseMomentumMethod`.
+
+### Ordering Rationale Summary
+
+1. **Infrastructure is built once on the simplest method.** SimCLR forces you to implement `BaseSSLMethod`, `SSLDataModule`, and `KNNEvalCallback` before the complexity of queues or predictors.
+2. **`BaseMomentumMethod` is introduced once and reused.** Adding it for MoCo v1 gives it to BYOL, DINO, and iBOT for free.
+3. **Collapse detection logging is added with BYOL.** The canonical collapse scenario is non-contrastive methods. Once added, the metric is available for all methods.
+4. **ViT methods are last.** They require different backbone config, different augmentation, and different projector architecture. Keeping them in Group 6 avoids polluting the ResNet-oriented tutorial with ViT-specific code paths.
 
 ---
 
 ## Sources
 
-- solo-learn source and JMLR paper: https://github.com/vturrisi/solo-learn / https://www.jmlr.org/papers/v23/21-1155.html (HIGH confidence)
-- LightlySSL documentation and module organization: https://docs.lightly.ai/self-supervised-learning/ (HIGH confidence)
-- PyTorch Lightning 2.6.x DataModule docs: https://lightning.ai/docs/pytorch/stable/data/datamodule.html (HIGH confidence)
-- PyTorch Lightning 2.6.x Logging docs: https://lightning.ai/docs/pytorch/stable/extensions/logging.html (HIGH confidence)
-- RankMe (effective rank as SSL diagnostic): Garrido et al., ICML 2023, https://proceedings.mlr.press/v202/garrido23a/garrido23a.pdf (HIGH confidence — peer-reviewed)
-- Understanding dimensional collapse: Jing et al., ICLR 2022, https://openreview.net/forum?id=YevsQ05DEN7 (HIGH confidence)
-- NumPy docstring standard: https://numpydoc.readthedocs.io/en/latest/format.html (HIGH confidence)
-- SSL method implementation curriculum: https://theaisummer.com/simclr/ and https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial17/SimCLR.html (MEDIUM confidence — tutorial sources)
-- Ploomber ML testing series: https://ploomber.io/blog/ml-testing-i/ (MEDIUM confidence)
-- Made With ML testing guide: https://madewithml.com/courses/mlops/testing/ (MEDIUM confidence)
+- solo-learn source (`solo/methods/`): https://github.com/vturrisi/solo-learn (HIGH confidence — source inspected directly)
+- solo-learn `__init__.py` registry pattern: source confirmed manual explicit dict registration
+- LightlySSL transform-per-method and model organization: https://docs.lightly.ai/self-supervised-learning/ (HIGH confidence — official docs)
+- PyTorch Lightning `fast_dev_run` / `limit_train_batches` / `on_train_batch_end`: https://lightning.ai/docs/pytorch/stable/common/trainer.html (HIGH confidence — official docs)
+- PyTorch Lightning LightningDataModule lifecycle: https://lightning.ai/docs/pytorch/stable/data/datamodule.html (HIGH confidence)
+- VICReg per-dimension std as collapse detection: https://arxiv.org/abs/2105.04906 (HIGH confidence — original paper, Bardes et al. 2022)
+- Dimensional collapse survey: https://openreview.net/forum?id=YevsQ05DEN7 (MEDIUM confidence — peer reviewed)
+- Stepwise SSL / embedding rank tracking: https://bair.berkeley.edu/blog/2023/07/10/stepwise-ssl/ (MEDIUM confidence — BAIR blog, backed by NeurIPS 2023 paper)
+- kNN vs. linear probe as evaluation proxy: https://arxiv.org/abs/2407.12210 (MEDIUM confidence — IJCV 2025)
+- NumPy docstring format: https://numpydoc.readthedocs.io/en/latest/format.html (HIGH confidence)
+- UvA DL SimCLR tutorial (theory→implementation structure): https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial17/SimCLR.html (MEDIUM confidence)
