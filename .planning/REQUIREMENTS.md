@@ -27,7 +27,7 @@
 
 - [ ] **FOUND-09**: TensorBoard logging wired by default. At minimum, log `train/loss`, `train/lr`, and `eval/knn_acc` (when k-NN callback is enabled). Logging is handled through `self.log(...)` / `self.log_dict(...)` in the base class — no per-method logging boilerplate.
 
-- [ ] **FOUND-10**: `EMAUpdater` utility class with `base_momentum`, `end_momentum`, `total_steps` parameters and a `step(online_params, target_params)` method. Shared by MoCo v1/v2/v3, BYOL, and DINO. EMA update must happen in `on_train_batch_end`, not in `training_step` or `on_before_optimizer_step`. Momentum encoder parameters must never appear in `learnable_params` / optimizer param groups.
+- [x] **FOUND-10**: `EMAUpdater` utility class with `base_momentum`, `end_momentum`, `total_steps` parameters and a `step(online_params, target_params)` method. Shared by MoCo v1/v2/v3, BYOL, and DINO. EMA update must happen in `on_train_batch_end`, not in `training_step` or `on_before_optimizer_step`. Momentum encoder parameters must never appear in `learnable_params` / optimizer param groups.
 
 ---
 
