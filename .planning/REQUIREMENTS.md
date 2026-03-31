@@ -9,7 +9,7 @@
 
 ### Foundation
 
-- [ ] **FOUND-01**: `BaseSSLModule(LightningModule)` abstract base class with `build_projector()`, `learnable_params` property, `configure_optimizers()` (AdamW/SGD/LARS dispatch + warmup-cosine scheduler), and `on_train_batch_end()` hook for EMA updates. All method subclasses must extend this class — no standalone training scripts.
+- [x] **FOUND-01**: `BaseSSLModule(LightningModule)` abstract base class with `build_projector()`, `learnable_params` property, `configure_optimizers()` (AdamW/SGD/LARS dispatch + warmup-cosine scheduler), and `on_train_batch_end()` hook for EMA updates. All method subclasses must extend this class — no standalone training scripts.
 
 - [x] **FOUND-02**: Pydantic v2 config schema (`TrainConfig`) with top-level fields for `method`, `backbone`, `pretrained`, `max_epochs`, `warmup_epochs`, `batch_size`, `lr`, `weight_decay`, `optimizer`, `scheduler`, plus namespaced per-method sub-configs (e.g., `simclr.temperature`). YAML is loaded via `yaml.safe_load` and validated by `TrainConfig.model_validate(raw)`. No Hydra. No OmegaConf.
 
@@ -25,7 +25,7 @@
 
 - [x] **FOUND-08**: `EvalConfig` Pydantic sub-schema added to `TrainConfig` under an `eval:` key. Sub-configs: `LinearProbeConfig`, `KNNConfig`, `TSNEConfig`, `UMAPConfig`, `FinetuneConfig`, `CAMConfig`. All evaluation settings live in the same YAML as pretraining — one file per experiment.
 
-- [ ] **FOUND-09**: TensorBoard logging wired by default. At minimum, log `train/loss`, `train/lr`, and `eval/knn_acc` (when k-NN callback is enabled). Logging is handled through `self.log(...)` / `self.log_dict(...)` in the base class — no per-method logging boilerplate.
+- [x] **FOUND-09**: TensorBoard logging wired by default. At minimum, log `train/loss`, `train/lr`, and `eval/knn_acc` (when k-NN callback is enabled). Logging is handled through `self.log(...)` / `self.log_dict(...)` in the base class — no per-method logging boilerplate.
 
 - [x] **FOUND-10**: `EMAUpdater` utility class with `base_momentum`, `end_momentum`, `total_steps` parameters and a `step(online_params, target_params)` method. Shared by MoCo v1/v2/v3, BYOL, and DINO. EMA update must happen in `on_train_batch_end`, not in `training_step` or `on_before_optimizer_step`. Momentum encoder parameters must never appear in `learnable_params` / optimizer param groups.
 

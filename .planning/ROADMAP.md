@@ -40,7 +40,7 @@ Plans:
 - [x] 01-03-PLAN.md — `InfoNCELoss` (symmetric + asymmetric modes) + `LARS` optimizer from scratch
 - [x] 01-04-PLAN.md — `ContrastiveAugmentation` (strong/weak paths) + `SSLDataModule` (multi-view ImageFolder)
 - [x] 01-05-PLAN.md — `EMAUpdater` with cosine-scheduled momentum
-- [ ] 01-06-PLAN.md — `BaseSSLModule` abstract base class (configure_optimizers, EMA hook, logging) + `core/__init__.py` re-exports
+- [x] 01-06-PLAN.md — `BaseSSLModule` abstract base class (configure_optimizers, EMA hook, logging) + `core/__init__.py` re-exports
 - [ ] 01-07-PLAN.md — `method_dispatcher` factory with registry pattern
 
 **UI hint**: no
@@ -281,7 +281,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 5/7 | In Progress|  |
+| 1. Foundation | 6/7 | In Progress|  |
 | 2. Proxy Tasks Era | 0/5 | Not started | - |
 | 3. SimCLR | 0/6 | Not started | - |
 | 4. MoCo | 0/6 | Not started | - |
