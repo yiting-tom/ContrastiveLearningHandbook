@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation 01-03-PLAN.md
-last_updated: "2026-03-31T15:47:17.298Z"
+stopped_at: Completed 01-foundation 01-04-PLAN.md
+last_updated: "2026-03-31T15:49:25.401Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 7
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-03-31
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P05 | 2 | 1 tasks | 2 files |
 | Phase 01-foundation P01 | 15 | 2 tasks | 9 files |
 | Phase 01-foundation P03 | 3 | 2 tasks | 4 files |
+| Phase 01-foundation P04 | 10 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: _StrictBase pattern: inherit from _StrictBase to get extra='forbid' automatically on all config sub-classes
 - [Phase 01-foundation]: InfoNCELoss always L2-normalizes inputs internally — callers do not need to pre-normalize
 - [Phase 01-foundation]: LARS implemented from scratch per D-04 — no lightly/torchlars dependency, tutorial-readable ~60 lines
+- [Phase 01-foundation]: Use torchvision.transforms.v2 for SSL augmentations with strong path s=1.0 (SimCLR) and weak path s=0.4 (era-1)
 
 ### Pending Todos
 
@@ -82,6 +84,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T15:47:17.294Z
-Stopped at: Completed 01-foundation 01-03-PLAN.md
+Last session: 2026-03-31T15:49:25.396Z
+Stopped at: Completed 01-foundation 01-04-PLAN.md
 Resume file: None

@@ -17,9 +17,9 @@
 
 - [ ] **FOUND-04**: `ProjectionHead(input_dim, hidden_dim, output_dim, num_layers, use_bn=True)` reusable MLP. Configurable depth, width, and output normalization. BN + ReLU on intermediate layers; BN only (no ReLU) on final layer. Used by all methods — no duplicated MLP code.
 
-- [ ] **FOUND-05**: `ContrastiveAugmentation(size, n_views, strong=True)` shared augmentation pipeline: random crop + resize, color jitter (strength s=1.0 for strong), random grayscale (p=0.2), Gaussian blur (sigma 0.1–2.0, p=0.5), horizontal flip. A `strong=False` path covers era-1 methods (Instance Discrimination, CMC) which use weaker augmentation. Uses `torchvision.transforms.v2` API.
+- [x] **FOUND-05**: `ContrastiveAugmentation(size, n_views, strong=True)` shared augmentation pipeline: random crop + resize, color jitter (strength s=1.0 for strong), random grayscale (p=0.2), Gaussian blur (sigma 0.1–2.0, p=0.5), horizontal flip. A `strong=False` path covers era-1 methods (Instance Discrimination, CMC) which use weaker augmentation. Uses `torchvision.transforms.v2` API.
 
-- [ ] **FOUND-06**: `SSLDataModule(LightningDataModule)` wrapping either ImageFolder-style data directories or a custom dataset class. Accepts `n_views` to produce the correct number of augmented views per sample. DataModule is shared across all methods; per-method differences are in `n_views` only (2 for most, 8+ for SwAV/DINO multi-crop).
+- [x] **FOUND-06**: `SSLDataModule(LightningDataModule)` wrapping either ImageFolder-style data directories or a custom dataset class. Accepts `n_views` to produce the correct number of augmented views per sample. DataModule is shared across all methods; per-method differences are in `n_views` only (2 for most, 8+ for SwAV/DINO multi-crop).
 
 - [ ] **FOUND-07**: `method_dispatcher(cfg: TrainConfig) -> BaseSSLModule` factory. Maps the `method` string in config to the correct `LightningModule` subclass. Raises `ValueError` with available methods listed when an unknown method is specified.
 
