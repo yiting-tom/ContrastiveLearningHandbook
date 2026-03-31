@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation 01-04-PLAN.md
-last_updated: "2026-03-31T15:49:25.401Z"
+stopped_at: Completed 01-foundation-01-02-PLAN.md
+last_updated: "2026-03-31T15:50:29.957Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-03-31
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-foundation P01 | 15 | 2 tasks | 9 files |
 | Phase 01-foundation P03 | 3 | 2 tasks | 4 files |
 | Phase 01-foundation P04 | 10 | 2 tasks | 3 files |
+| Phase 01-foundation P02 | 15 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: InfoNCELoss always L2-normalizes inputs internally — callers do not need to pre-normalize
 - [Phase 01-foundation]: LARS implemented from scratch per D-04 — no lightly/torchlars dependency, tutorial-readable ~60 lines
 - [Phase 01-foundation]: Use torchvision.transforms.v2 for SSL augmentations with strong path s=1.0 (SimCLR) and weak path s=0.4 (era-1)
+- [Phase 01-foundation]: build_backbone always uses backbone.num_features — never hardcode feature dimensions (2048/384/512)
+- [Phase 01-foundation]: ProjectionHead final layer has BN but no ReLU — matches SimCLR/MoCo/BYOL conventions
 
 ### Pending Todos
 
@@ -84,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T15:49:25.396Z
-Stopped at: Completed 01-foundation 01-04-PLAN.md
+Last session: 2026-03-31T15:50:29.954Z
+Stopped at: Completed 01-foundation-01-02-PLAN.md
 Resume file: None

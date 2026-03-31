@@ -36,7 +36,7 @@ This roadmap builds the tutorial repository from shared infrastructure outward t
 
 Plans:
 - [x] 01-01-PLAN.md — Project scaffold (requirements.txt, pyproject.toml, package inits, test fixtures) + Pydantic v2 `TrainConfig` / `EvalConfig` config schema
-- [ ] 01-02-PLAN.md — `build_backbone()` timm factory + `ProjectionHead` reusable MLP
+- [x] 01-02-PLAN.md — `build_backbone()` timm factory + `ProjectionHead` reusable MLP
 - [x] 01-03-PLAN.md — `InfoNCELoss` (symmetric + asymmetric modes) + `LARS` optimizer from scratch
 - [x] 01-04-PLAN.md — `ContrastiveAugmentation` (strong/weak paths) + `SSLDataModule` (multi-view ImageFolder)
 - [x] 01-05-PLAN.md — `EMAUpdater` with cosine-scheduled momentum
@@ -281,7 +281,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 4/7 | In Progress|  |
+| 1. Foundation | 5/7 | In Progress|  |
 | 2. Proxy Tasks Era | 0/5 | Not started | - |
 | 3. SimCLR | 0/6 | Not started | - |
 | 4. MoCo | 0/6 | Not started | - |
