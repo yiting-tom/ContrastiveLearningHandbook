@@ -35,13 +35,13 @@ This roadmap builds the tutorial repository from shared infrastructure outward t
 **Plans**: 7 plans
 
 Plans:
-- [ ] 01-01: Implement `BaseSSLModule(LightningModule)` — abstract `build_projector()`, `learnable_params` property, `configure_optimizers()` with AdamW/SGD/LARS dispatch and warmup-cosine scheduler, `on_train_batch_end()` EMA hook, TensorBoard logging via `self.log()`
-- [ ] 01-02: Implement Pydantic v2 `TrainConfig` with top-level training fields and namespaced per-method sub-configs; `load_config(path)` helper using `yaml.safe_load` + `TrainConfig.model_validate()`; `EvalConfig` sub-schema with `LinearProbeConfig`, `KNNConfig`, `TSNEConfig`, `UMAPConfig`, `FinetuneConfig`, `CAMConfig`
-- [ ] 01-03: Implement `build_backbone(model_name, pretrained=False)` factory using `timm.create_model(..., num_classes=0)`; return `(backbone, feat_dim)` where `feat_dim = backbone.num_features`; write unit test asserting `num_features` matches for resnet50 and vit_small_patch16_224
-- [ ] 01-04: Implement `ProjectionHead(input_dim, hidden_dim, output_dim, num_layers, use_bn=True)` reusable MLP with BN+ReLU on intermediate layers and BN-only on the final layer; validate shape and parameter counts in tests
-- [ ] 01-05: Implement `ContrastiveAugmentation(size, n_views, strong=True)` — strong path with s=1.0 color jitter, Gaussian blur (p=0.5), grayscale (p=0.2), horizontal flip using `torchvision.transforms.v2`; weak path for era-1 methods; implement `SSLDataModule` wrapping ImageFolder with configurable `n_views`
-- [ ] 01-06: Implement `EMAUpdater(base_momentum, end_momentum, total_steps)` with cosine-scheduled momentum and `step(online_params, target_params)`; implement `method_dispatcher(cfg) -> BaseSSLModule` factory with `ValueError` on unknown method
-- [ ] 01-07: Implement `InfoNCELoss(temperature, reduction)` covering symmetric in-batch mode and asymmetric queue mode; implement `LARS` optimizer (from scratch or imported from `lightly`); wire `LARS` into `configure_optimizers()` dispatch; add `requirements.txt` with pinned versions
+- [ ] 01-01-PLAN.md — Project scaffold (requirements.txt, pyproject.toml, package inits, test fixtures) + Pydantic v2 `TrainConfig` / `EvalConfig` config schema
+- [ ] 01-02-PLAN.md — `build_backbone()` timm factory + `ProjectionHead` reusable MLP
+- [ ] 01-03-PLAN.md — `InfoNCELoss` (symmetric + asymmetric modes) + `LARS` optimizer from scratch
+- [ ] 01-04-PLAN.md — `ContrastiveAugmentation` (strong/weak paths) + `SSLDataModule` (multi-view ImageFolder)
+- [ ] 01-05-PLAN.md — `EMAUpdater` with cosine-scheduled momentum
+- [ ] 01-06-PLAN.md — `BaseSSLModule` abstract base class (configure_optimizers, EMA hook, logging) + `core/__init__.py` re-exports
+- [ ] 01-07-PLAN.md — `method_dispatcher` factory with registry pattern
 
 **UI hint**: no
 
