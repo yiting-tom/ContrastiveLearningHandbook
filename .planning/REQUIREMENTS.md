@@ -83,7 +83,7 @@
 
 ### Shared Infrastructure (Cross-Method)
 
-- [ ] **INFRA-01**: `InfoNCELoss(temperature, reduction='mean')` standalone loss module. Covers SimCLR (in-batch symmetric), MoCo v1/v2 (asymmetric with queue), MoCo v3 (symmetric in-batch), Instance Discrimination (NCE approximation), CMC (multi-view), and InfoMin. SupCon variant accepts an optional `labels` parameter.
+- [x] **INFRA-01**: `InfoNCELoss(temperature, reduction='mean')` standalone loss module. Covers SimCLR (in-batch symmetric), MoCo v1/v2 (asymmetric with queue), MoCo v3 (symmetric in-batch), Instance Discrimination (NCE approximation), CMC (multi-view), and InfoMin. SupCon variant accepts an optional `labels` parameter.
 
 - [ ] **INFRA-02**: `MemoryBank(n_samples, dim)` implemented as `nn.Embedding` with update-by-index. Shared by Instance Discrimination and CMC.
 
@@ -93,7 +93,7 @@
 
 - [ ] **INFRA-05**: `PredictorHead` (either a re-use of `ProjectionHead` or a separate class for bottleneck architectures). Shared by BYOL, SimSiam, MoCo v3, and DINO.
 
-- [ ] **INFRA-06**: `LARS` optimizer implementation. Required by SimCLR v1/v2, SwAV, BYOL, Barlow Twins. Either implement from scratch or import from `lightly`. Pin as an explicit dependency.
+- [x] **INFRA-06**: `LARS` optimizer implementation. Required by SimCLR v1/v2, SwAV, BYOL, Barlow Twins. Either implement from scratch or import from `lightly`. Pin as an explicit dependency.
 
 ---
 

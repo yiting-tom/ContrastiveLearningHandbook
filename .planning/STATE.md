@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-foundation-01-PLAN.md
-last_updated: "2026-03-31T15:46:05.690Z"
+stopped_at: Completed 01-foundation 01-03-PLAN.md
+last_updated: "2026-03-31T15:47:17.298Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 7
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Position
 
 Phase: 01 (foundation) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-03-31
 
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01-foundation P05 | 2 | 1 tasks | 2 files |
 | Phase 01-foundation P01 | 15 | 2 tasks | 9 files |
+| Phase 01-foundation P03 | 3 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: EMAUpdater is standalone (no BaseSSLModule dependency) for isolated reuse across MoCo/BYOL/DINO momentum encoders
 - [Phase 01-foundation]: extra='forbid' on all Pydantic sub-configs (D-08) — unknown YAML keys raise ValidationError immediately, catches tutorial copy-paste typos
 - [Phase 01-foundation]: _StrictBase pattern: inherit from _StrictBase to get extra='forbid' automatically on all config sub-classes
+- [Phase 01-foundation]: InfoNCELoss always L2-normalizes inputs internally — callers do not need to pre-normalize
+- [Phase 01-foundation]: LARS implemented from scratch per D-04 — no lightly/torchlars dependency, tutorial-readable ~60 lines
 
 ### Pending Todos
 
@@ -79,6 +82,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T15:46:05.685Z
-Stopped at: Completed 01-foundation-01-PLAN.md
+Last session: 2026-03-31T15:47:17.294Z
+Stopped at: Completed 01-foundation 01-03-PLAN.md
 Resume file: None
