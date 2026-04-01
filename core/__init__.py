@@ -34,6 +34,11 @@ except ImportError:
     pass
 
 try:
+    from core.memory_bank import MemoryBank
+except ImportError:
+    pass
+
+try:
     from core.optimizers import LARS
 except ImportError:
     pass
@@ -55,5 +60,6 @@ __all__ = [
     "EMAUpdater",
     "InfoNCELoss",
     "LARS",
+    "MemoryBank",
     "ProjectionHead",
 ]

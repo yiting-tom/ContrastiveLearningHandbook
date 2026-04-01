@@ -92,6 +92,21 @@ class SupConConfig(_StrictBase):
     n_samples_per_class: int = 2
 
 
+class InstanceDiscriminationConfig(_StrictBase):
+    """Instance Discrimination (Wu et al., CVPR 2018) method-specific hyper-parameters."""
+
+    temperature: float = 0.07
+    n_negatives: int = 4096
+    projection_dim: int = 128
+
+
+class InvariantSpreadConfig(_StrictBase):
+    """Invariant Spread (Ye et al., CVPR 2019) method-specific hyper-parameters."""
+
+    temperature: float = 0.07
+    projection_dim: int = 128
+
+
 # ---------------------------------------------------------------------------
 # Eval sub-configs
 # ---------------------------------------------------------------------------
@@ -197,6 +212,8 @@ class TrainConfig(_StrictBase):
     simsiam: Optional[SimSiamConfig] = None
     dino: Optional[DINOConfig] = None
     supcon: Optional[SupConConfig] = None
+    instance_discrimination: Optional[InstanceDiscriminationConfig] = None
+    invariant_spread: Optional[InvariantSpreadConfig] = None
 
     # Evaluation
     eval: Optional[EvalConfig] = None
