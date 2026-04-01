@@ -90,6 +90,46 @@ def ssl_collate_fn(batch):
     return torch.stack(stacked), torch.tensor(labels, dtype=torch.long)
 
 
+class IndexedDataset(torch.utils.data.Dataset):
+    """Wraps a dataset to also return the sample index.
+
+    Used by Instance Discrimination (and future CMC) to look up and update
+    memory bank entries by sample index.
+
+    Args:
+        dataset: Base dataset returning (views_list, label) tuples.
+    """
+
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        data = self.dataset[idx]
+        return (*data, idx)
+
+
+def ssl_collate_with_index(batch):
+    """Collate function for SSL datasets that also return sample indices.
+
+    Input: list of (views_list, label, index) tuples.
+    Output: (views_tensor, labels_tensor, indices_tensor)
+        views_tensor shape: [n_views, B, C, H, W]
+        labels_tensor shape: [B]
+        indices_tensor shape: [B]
+    """
+    views, labels, indices = zip(*batch)
+    n_views = len(views[0])
+    stacked = [torch.stack([v[i] for v in views]) for i in range(n_views)]
+    return (
+        torch.stack(stacked),
+        torch.tensor(labels, dtype=torch.long),
+        torch.tensor(indices, dtype=torch.long),
+    )
+
+
 class SSLDataModule(L.LightningDataModule):
     """Lightning DataModule for SSL pretraining.
 
