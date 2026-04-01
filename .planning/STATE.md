@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 2 context gathered (assumptions mode)
-last_updated: "2026-04-01T15:33:48.299Z"
-last_activity: 2026-03-31
+stopped_at: Completed 02-proxy-tasks-era-02-PLAN.md
+last_updated: "2026-04-01T15:53:22.563Z"
+last_activity: 2026-04-01
 progress:
   total_phases: 10
   completed_phases: 1
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 12
+  completed_plans: 8
   percent: 10
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 
 Phase: 01 (foundation) — COMPLETE (verified 2026-03-31)
 Plan: 7 of 7
-Status: Phase verified — ready to proceed to Phase 02
-Last activity: 2026-03-31
+Status: Phase complete — ready for verification
+Last activity: 2026-04-01
 
 Progress: [█░░░░░░░░░] 10%
 
@@ -67,6 +67,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 01-foundation P02 | 15 | 2 tasks | 4 files |
 | Phase 01-foundation P06 | 160 | 1 tasks | 3 files |
 | Phase 01-foundation P07 | 121 | 1 tasks | 2 files |
+| Phase 02-proxy-tasks-era P02 | 119 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: EMA update wired in on_train_batch_end not training_step to avoid optimizer interference with gradient computation
 - [Phase 01-foundation]: Registry dict pattern for dispatcher — phases 2-8 call register_method() without modifying dispatcher internals
 - [Phase 01-foundation]: method_dispatcher raises ValueError with sorted available methods list for user-friendly config error messages
+- [Phase 02-proxy-tasks-era]: NCELossWithFixedZ is standalone nn.Module, does not subclass InfoNCELoss (D-02: incompatible Z-normalization semantics)
+- [Phase 02-proxy-tasks-era]: Z and z_initialized stored as register_buffers for checkpoint save/load survival
 
 ### Pending Todos
 
@@ -101,7 +104,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-01T15:33:48.295Z
-Stopped at: Phase 2 context gathered (assumptions mode)
-Resume file: .planning/phases/02-proxy-tasks-era/02-CONTEXT.md
+Last session: 2026-04-01T15:53:22.559Z
+Stopped at: Completed 02-proxy-tasks-era-02-PLAN.md
+Resume file: None
 Next action: Begin Phase 02 — Proxy Tasks Era (ERA1-01 Instance Discrimination, ERA1-02 Invariant Spread)
