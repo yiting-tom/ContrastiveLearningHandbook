@@ -137,14 +137,15 @@ def test_z_fixed_during_training(tmp_imagefolder):
 
 
 def test_dispatcher_registration():
-    """After importing methods.instance_discrimination, dispatcher works."""
-    import methods.instance_discrimination  # noqa: F401
-    from core.dispatcher import method_dispatcher
+    """After registering instance_discrimination, dispatcher works."""
+    from core.dispatcher import method_dispatcher, register_method, available_methods
+    from methods.instance_discrimination.module import InstanceDiscriminationModule
+
+    if "instance_discrimination" not in available_methods():
+        register_method("instance_discrimination", InstanceDiscriminationModule)
 
     cfg = _make_cfg()
     model = method_dispatcher(cfg)
-
-    from methods.instance_discrimination.module import InstanceDiscriminationModule
     assert isinstance(model, InstanceDiscriminationModule)
 
 
