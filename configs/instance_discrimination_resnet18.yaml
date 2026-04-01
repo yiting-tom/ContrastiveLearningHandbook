@@ -1,0 +1,30 @@
+# Instance Discrimination (Wu et al., CVPR 2018)
+# Non-parametric memory bank + NCE loss with fixed Z.
+#
+# Key hyperparameters:
+#   temperature: 0.07 (standard for NCE-based methods)
+#   n_negatives: 4096 (sampled from memory bank each step)
+#   n_views: 1 (single augmented view; bank provides comparison target)
+#
+# Note: Uses weak augmentation (era-1 defaults, no Gaussian blur).
+# Note: Memory bank features become stale as encoder trains.
+#        See MoCo (Phase 4) for the queue-based solution.
+
+method: instance_discrimination
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 128
+lr: 0.03
+weight_decay: 1e-4
+optimizer: sgd
+n_views: 1
+data_dir: data
+num_workers: 4
+
+instance_discrimination:
+  temperature: 0.07
+  n_negatives: 4096
+  projection_dim: 128

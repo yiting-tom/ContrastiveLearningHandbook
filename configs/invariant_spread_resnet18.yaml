@@ -1,0 +1,33 @@
+# Invariant Spread (Ye et al., CVPR 2019)
+# In-batch contrastive learning without memory bank or queue.
+#
+# Key hyperparameters:
+#   temperature: 0.07
+#   n_views: 2 (two augmented views per image)
+#
+# IMPORTANT: Batch-size sensitive! Performance degrades significantly below
+# batch_size=256 because negatives come only from the current batch
+# (effective negatives = batch_size - 1). Unlike Instance Discrimination
+# (4096 negatives from bank) or MoCo (65536 from queue), this method's
+# negative count is limited by batch size.
+#
+# Note: Uses weak augmentation (era-1 defaults, no Gaussian blur).
+# Note: Direct ancestor of SimCLR (Phase 3).
+
+method: invariant_spread
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 0.03
+weight_decay: 1e-4
+optimizer: sgd
+n_views: 2
+data_dir: data
+num_workers: 4
+
+invariant_spread:
+  temperature: 0.07
+  projection_dim: 128
