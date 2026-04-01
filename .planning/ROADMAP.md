@@ -60,7 +60,7 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 02-01: Implement `MemoryBank(n_samples, dim)` as `nn.Embedding` with `update(indices, features)` and `get(indices)` interface; initialize with L2-normalized random vectors; write tests for update-by-index correctness
+- [x] 02-01: Implement `MemoryBank(n_samples, dim)` as `nn.Embedding` with `update(indices, features)` and `get(indices)` interface; initialize with L2-normalized random vectors; write tests for update-by-index correctness
 - [ ] 02-02: Implement NCE loss function — (m+1)-way NCE with sampled negatives from the bank, temperature τ=0.07, normalization constant Z estimated on first batch and fixed, ε=1e-7 in denominator; write unit test that Z does not change after first call
 - [ ] 02-03: Implement `InstanceDiscriminationModule(BaseSSLModule)` — encoder, `MemoryBank`, NCE loss, weak augmentation via `ContrastiveAugmentation(strong=False)`; update bank each step with current encoder output (no EMA); register in dispatcher
 - [ ] 02-04: Implement `InvariantSpreadModule(BaseSSLModule)` — in-batch cross-entropy loss reusing `InfoNCELoss` in symmetric mode; one augmented view per image; document batch-size sensitivity in docstring; register in dispatcher

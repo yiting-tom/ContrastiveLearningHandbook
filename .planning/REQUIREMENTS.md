@@ -85,7 +85,7 @@
 
 - [x] **INFRA-01**: `InfoNCELoss(temperature, reduction='mean')` standalone loss module. Covers SimCLR (in-batch symmetric), MoCo v1/v2 (asymmetric with queue), MoCo v3 (symmetric in-batch), Instance Discrimination (NCE approximation), CMC (multi-view), and InfoMin. SupCon variant accepts an optional `labels` parameter.
 
-- [ ] **INFRA-02**: `MemoryBank(n_samples, dim)` implemented as `nn.Embedding` with update-by-index. Shared by Instance Discrimination and CMC.
+- [x] **INFRA-02**: `MemoryBank(n_samples, dim)` implemented as `nn.Embedding` with update-by-index. Shared by Instance Discrimination and CMC.
 
 - [ ] **INFRA-03**: `MomentumQueue(queue_size, dim)` FIFO buffer (torch.zeros initialized, with pointer). Shared by MoCo v1 and MoCo v2. Exposes `get_negatives()` and `update(keys)` interface.
 
