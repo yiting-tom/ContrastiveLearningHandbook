@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 02-01-PLAN.md (MemoryBank + sub-configs)"
-last_updated: "2026-04-01T15:54:00Z"
-last_activity: 2026-04-01 -- Phase 02 plan 01 complete
+stopped_at: "Completed 02-01 and 02-02 (MemoryBank + NCELossWithFixedZ)"
+last_updated: "2026-04-01T16:00:00Z"
+last_activity: 2026-04-01 -- Phase 02 wave 1 complete
 progress:
   total_phases: 10
   completed_phases: 1
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Position
 
 Phase: 02 (proxy-tasks-era) — EXECUTING
-Plan: 1 of 5 COMPLETE
-Status: Executing Phase 02
-Last activity: 2026-04-01 -- Completed 02-01 MemoryBank + sub-configs
+Plan: 2 of 5 COMPLETE (wave 1 done)
+Status: Executing Phase 02 — Wave 2 in progress
+Last activity: 2026-04-01 -- Completed wave 1 (02-01 MemoryBank + 02-02 NCELossWithFixedZ)
 
 Progress: [█░░░░░░░░░] 10%
 
@@ -68,6 +68,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 01-foundation P06 | 160 | 1 tasks | 3 files |
 | Phase 01-foundation P07 | 121 | 1 tasks | 2 files |
 | Phase 02-proxy-tasks P01 | 199 | 2 tasks | 4 files |
+| Phase 02-proxy-tasks-era P02 | 119 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: method_dispatcher raises ValueError with sorted available methods list for user-friendly config error messages
 - [Phase 02-proxy-tasks]: nn.Embedding as backing store for MemoryBank -- indexed lookup with requires_grad=False, L2-normalized storage
 - [Phase 02-proxy-tasks]: All MemoryBank vectors L2-normalized on storage so cosine similarity reduces to dot product
+- [Phase 02-proxy-tasks-era]: NCELossWithFixedZ is standalone nn.Module, does not subclass InfoNCELoss (D-02: incompatible Z-normalization semantics)
+- [Phase 02-proxy-tasks-era]: Z and z_initialized stored as register_buffers for checkpoint save/load survival
 
 ### Pending Todos
 
@@ -104,7 +107,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-01T15:54:00Z
-Stopped at: Completed 02-01-PLAN.md (MemoryBank + sub-configs)
-Resume file: .planning/phases/02-proxy-tasks-era/02-01-SUMMARY.md
-Next action: Execute 02-02 (Instance Discrimination) and 02-03 (Invariant Spread)
+Last session: 2026-04-01T16:00:00Z
+Stopped at: Completed wave 1 (02-01 MemoryBank + sub-configs, 02-02 NCELossWithFixedZ)
+Resume file: .planning/phases/02-proxy-tasks-era/02-02-SUMMARY.md
+Next action: Execute wave 2 — 02-03 InstanceDiscriminationModule and 02-04 InvariantSpreadModule
