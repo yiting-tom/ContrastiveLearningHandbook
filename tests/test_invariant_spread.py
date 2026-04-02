@@ -153,10 +153,10 @@ def test_train_5_epochs(large_imagefolder):
 def test_dispatcher_registration():
     """After registering invariant_spread, dispatcher returns InvariantSpreadModule."""
     from methods.invariant_spread.module import InvariantSpreadModule
-    from core.dispatcher import method_dispatcher, register_method
+    from core.dispatcher import method_dispatcher, register_method, available_methods
 
-    # Re-register since clean_registry restores original (empty) state
-    register_method("invariant_spread", InvariantSpreadModule)
+    if "invariant_spread" not in available_methods():
+        register_method("invariant_spread", InvariantSpreadModule)
 
     cfg = _make_cfg()
     model = method_dispatcher(cfg)
@@ -190,3 +190,38 @@ def test_batch_size_sensitivity_docstring():
     doc_lower = doc.lower()
     assert "batch" in doc_lower, "Docstring must mention 'batch'"
     assert "sensitiv" in doc_lower, "Docstring must mention 'sensitivity' or 'sensitive'"
+
+
+def test_yaml_config_loads_and_trains(tmp_imagefolder):
+    """End-to-end: load YAML config, instantiate module via dispatcher, train 1 epoch."""
+    import yaml
+    from core.config import TrainConfig
+    from core.dispatcher import method_dispatcher
+    from core.data import SSLDataModule
+
+    with open("configs/invariant_spread_resnet18.yaml") as f:
+        raw = yaml.safe_load(f)
+    raw["data_dir"] = str(tmp_imagefolder)
+    raw["max_epochs"] = 1
+    raw["warmup_epochs"] = 0
+    raw["batch_size"] = 4
+    raw["num_workers"] = 0
+    cfg = TrainConfig.model_validate(raw)
+
+    from methods.invariant_spread.module import InvariantSpreadModule
+    from core.dispatcher import register_method, available_methods
+    if "invariant_spread" not in available_methods():
+        register_method("invariant_spread", InvariantSpreadModule)
+    model = method_dispatcher(cfg)
+
+    dm = SSLDataModule(
+        data_dir=cfg.data_dir, n_views=cfg.n_views,
+        batch_size=cfg.batch_size, num_workers=0, size=32, strong=False,
+    )
+
+    trainer = L.Trainer(
+        max_epochs=1, accelerator="cpu",
+        enable_checkpointing=False, logger=False, enable_progress_bar=False,
+    )
+    trainer.fit(model, dm)
+    # Verify training completed without error — no assertion needed, fit() would raise

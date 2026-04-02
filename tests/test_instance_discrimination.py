@@ -193,3 +193,49 @@ def test_bank_updated_after_step(tmp_imagefolder):
     bank_after = model.memory_bank.bank.weight.data
     changed = (~torch.all(initial_bank == bank_after, dim=1)).sum().item()
     assert changed > 0, "No bank entries were updated after a training step"
+
+
+def test_yaml_config_loads_and_trains(tmp_imagefolder):
+    """End-to-end: load YAML config, instantiate module via dispatcher, train 1 epoch."""
+    import yaml
+    from core.config import TrainConfig
+    from core.dispatcher import method_dispatcher
+    from core.data import SSLDataModule, IndexedDataset, ssl_collate_with_index
+    from core.memory_bank import MemoryBank
+
+    # Load and adapt config for test
+    with open("configs/instance_discrimination_resnet18.yaml") as f:
+        raw = yaml.safe_load(f)
+    raw["data_dir"] = str(tmp_imagefolder)
+    raw["max_epochs"] = 1
+    raw["warmup_epochs"] = 0
+    raw["batch_size"] = 4
+    raw["num_workers"] = 0
+    cfg = TrainConfig.model_validate(raw)
+
+    from methods.instance_discrimination.module import InstanceDiscriminationModule
+    from core.dispatcher import register_method, available_methods
+    if "instance_discrimination" not in available_methods():
+        register_method("instance_discrimination", InstanceDiscriminationModule)
+    model = method_dispatcher(cfg)
+
+    # Setup data with IndexedDataset wrapper
+    dm = SSLDataModule(
+        data_dir=cfg.data_dir, n_views=cfg.n_views,
+        batch_size=cfg.batch_size, num_workers=0, size=32, strong=False,
+    )
+    dm.setup()
+    n_samples = len(dm.train_dataset)
+    indexed_ds = IndexedDataset(dm.train_dataset)
+    dl = DataLoader(indexed_ds, batch_size=cfg.batch_size,
+                    shuffle=True, collate_fn=ssl_collate_with_index, drop_last=True)
+
+    # Initialize memory bank
+    model.memory_bank = MemoryBank(n_samples, cfg.instance_discrimination.projection_dim)
+
+    trainer = L.Trainer(
+        max_epochs=1, accelerator="cpu",
+        enable_checkpointing=False, logger=False, enable_progress_bar=False,
+    )
+    trainer.fit(model, dl)
+    # Verify training completed without error — no assertion needed, fit() would raise
