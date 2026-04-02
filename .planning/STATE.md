@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-04-01T16:12:28.768Z"
-last_activity: 2026-04-01
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-04-02T00:01:44.486Z"
+last_activity: 2026-04-02
 progress:
   total_phases: 10
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 12
   percent: 10
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Position
 
 Phase: 02 (proxy-tasks-era) — EXECUTING
-Plan: 3 of 5 COMPLETE (wave 1 done)
+Plan: 4 of 5 COMPLETE (wave 1 done)
 Status: Ready to execute
-Last activity: 2026-04-01
+Last activity: 2026-04-02
 
 Progress: [█░░░░░░░░░] 10%
 
@@ -70,6 +70,7 @@ Progress: [█░░░░░░░░░] 10%
 | Phase 02-proxy-tasks P01 | 199 | 2 tasks | 4 files |
 | Phase 02-proxy-tasks-era P02 | 119 | 1 tasks | 3 files |
 | Phase 02-proxy-tasks-era P04 | 795 | 1 tasks | 3 files |
+| Phase 02-proxy-tasks-era P05 | 222 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,7 @@ Recent decisions affecting current work:
 - [Phase 02-proxy-tasks-era]: NCELossWithFixedZ is standalone nn.Module, does not subclass InfoNCELoss (D-02: incompatible Z-normalization semantics)
 - [Phase 02-proxy-tasks-era]: Z and z_initialized stored as register_buffers for checkpoint save/load survival
 - [Phase 02-proxy-tasks-era]: InvariantSpreadModule reuses InfoNCELoss in symmetric mode (D-03) -- no new loss class, pure in-batch contrastive
+- [Phase 02-proxy-tasks-era]: methods/__init__.py imports sub-packages to trigger register_method() -- no explicit registry calls at top level
 
 ### Pending Todos
 
@@ -109,7 +111,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-01T16:12:28.764Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-04-02T00:01:44.482Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None
 Next action: Execute wave 2 — 02-03 InstanceDiscriminationModule and 02-04 InvariantSpreadModule
