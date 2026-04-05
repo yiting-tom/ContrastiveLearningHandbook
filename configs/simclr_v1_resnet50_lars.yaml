@@ -1,0 +1,25 @@
+# SimCLR v1 with LARS optimizer (Chen et al., ICML 2020)
+# Use LARS for batch sizes above ~1024 where AdamW/SGD degrade.
+#
+# Note: SimCLR performance degrades sharply below batch_size=256.
+# LARS enables training with batch_size=4096 (original paper setting).
+#
+# lr scaling rule: lr = 0.3 * batch_size / 256
+
+method: simclr_v1
+backbone: resnet50
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 0.3
+weight_decay: 1e-6
+optimizer: lars
+n_views: 2
+data_dir: data
+num_workers: 4
+
+simclr:
+  temperature: 0.5
+  projection_dim: 128

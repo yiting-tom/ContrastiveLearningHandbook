@@ -1,0 +1,28 @@
+# SimCLR v2 (Chen et al., NeurIPS 2020)
+# Big Self-Supervised Models are Strong Semi-Supervised Learners
+#
+# Differences from v1:
+#   - 3-layer projection head (vs 2-layer in v1)
+#   - Weight decay may need tuning due to larger projection head
+#
+# Note: SimCLR performance degrades sharply below batch_size=256.
+# Note: This implements the pretraining stage only.
+# The semi-supervised distillation stage is out of v1 scope.
+
+method: simclr_v2
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 1e-3
+weight_decay: 1e-6
+optimizer: adamw
+n_views: 2
+data_dir: data
+num_workers: 4
+
+simclr:
+  temperature: 0.5
+  projection_dim: 128

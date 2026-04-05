@@ -1,0 +1,27 @@
+# SimCLR v1 (Chen et al., ICML 2020)
+# A Simple Framework for Contrastive Learning of Visual Representations
+#
+# Note: SimCLR performance degrades sharply below batch_size=256.
+# Effective negatives = 2*(batch_size-1). For best results, use
+# batch_size=256+ with AdamW, or batch_size=1024+ with LARS.
+#
+# Uses strong augmentation (s=1.0 color jitter, Gaussian blur).
+# Loss computed on projection output z; evaluation on backbone output h.
+
+method: simclr_v1
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 1e-3
+weight_decay: 1e-6
+optimizer: adamw
+n_views: 2
+data_dir: data
+num_workers: 4
+
+simclr:
+  temperature: 0.5
+  projection_dim: 128
