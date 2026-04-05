@@ -39,6 +39,11 @@ except ImportError:
     pass
 
 try:
+    from core.queue import MomentumQueue
+except ImportError:
+    pass
+
+try:
     from core.optimizers import LARS
 except ImportError:
     pass
@@ -61,5 +66,6 @@ __all__ = [
     "InfoNCELoss",
     "LARS",
     "MemoryBank",
+    "MomentumQueue",
     "ProjectionHead",
 ]
