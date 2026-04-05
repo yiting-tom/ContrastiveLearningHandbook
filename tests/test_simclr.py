@@ -313,3 +313,76 @@ def test_default_optimizer_is_adamw():
     assert "AdamW" in type(optimizer).__name__, (
         f"Expected AdamW optimizer, got {type(optimizer).__name__}"
     )
+
+
+# ---------------------------------------------------------------------------
+# YAML Config Loading Tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def tmp_imagefolder(tmp_path):
+    """Create a minimal ImageFolder for config loading tests (2 classes, 8 images each)."""
+    rng = np.random.RandomState(99)
+    for cls_idx in range(2):
+        cls_dir = tmp_path / f"class_{cls_idx}"
+        cls_dir.mkdir()
+        for img_idx in range(8):
+            arr = rng.randint(0, 255, (32, 32, 3), dtype=np.uint8)
+            img = Image.fromarray(arr)
+            img.save(cls_dir / f"img_{img_idx:02d}.jpg")
+    return tmp_path
+
+
+def test_yaml_config_loads_and_trains(tmp_imagefolder):
+    """Load simclr_v1_resnet18.yaml, override for test, train 1 epoch."""
+    import yaml as _yaml
+
+    from methods.simclr.module import SimCLRv1Module
+    from core.dispatcher import method_dispatcher, register_method, available_methods
+
+    if "simclr_v1" not in available_methods():
+        register_method("simclr_v1", SimCLRv1Module)
+
+    with open("configs/simclr_v1_resnet18.yaml") as fh:
+        raw = _yaml.safe_load(fh)
+
+    # Override for fast test
+    raw["data_dir"] = str(tmp_imagefolder)
+    raw["max_epochs"] = 1
+    raw["warmup_epochs"] = 0
+    raw["batch_size"] = 4
+    raw["num_workers"] = 0
+
+    cfg = TrainConfig.model_validate(raw)
+    model = method_dispatcher(cfg)
+    dm = SSLDataModule(
+        data_dir=cfg.data_dir,
+        n_views=cfg.n_views,
+        batch_size=cfg.batch_size,
+        num_workers=cfg.num_workers,
+        size=32,
+        strong=True,
+    )
+    trainer = L.Trainer(
+        max_epochs=1,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+    )
+    trainer.fit(model, dm)
+    # If we get here, training completed without error
+
+
+def test_simclr_v2_yaml_config_loads():
+    """Load simclr_v2_resnet18.yaml and validate its fields."""
+    import yaml as _yaml
+
+    with open("configs/simclr_v2_resnet18.yaml") as fh:
+        raw = _yaml.safe_load(fh)
+
+    cfg = TrainConfig.model_validate(raw)
+    assert cfg.method == "simclr_v2"
+    assert cfg.simclr is not None
+    assert cfg.simclr.temperature == 0.5
+    assert cfg.simclr.projection_dim == 128
