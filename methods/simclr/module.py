@@ -1,9 +1,10 @@
-"""SimCLR v1 and v2 — contrastive learning with in-batch negatives.
+"""SimCLR v1 and v2 (Chen et al., ICML 2020 / NeurIPS 2020).
 
-SimCLR v1 uses a 2-layer projection head and symmetric NT-Xent loss (InfoNCE
-in symmetric mode with no queue).  SimCLR v2 is identical except for a 3-layer
-projection head that improves representation quality at the cost of more
-parameters.
+Two-view in-batch contrastive learning with symmetric NT-Xent loss. Both views
+are encoded by a shared backbone and projected through an MLP head. Loss is
+computed on the projection output z; downstream evaluation uses the backbone
+representation h. Strong augmentation (color jitter s=1.0, Gaussian blur) is
+critical for performance.
 
 Paper (v1): "A Simple Framework for Contrastive Learning of Visual Representations"
 Authors: Ting Chen, Simon Kornblith, Mohammad Norouzi, Geoffrey Hinton
@@ -15,17 +16,7 @@ Authors: Ting Chen, Simon Kornblith, Kevin Swersky, Mohammad Norouzi, Geoffrey H
 Venue: NeurIPS 2020
 arXiv: https://arxiv.org/abs/2006.10029
 
-Key properties:
-- Uses InfoNCELoss in symmetric mode (NT-Xent): loss on z, eval on h.
-- Strong augmentation (color jitter s=1.0) is critical for performance.
-- LARS optimizer recommended for large batch sizes (>= 256).
-- Batch size sensitivity: below ~256, representation quality degrades because
-  all negatives come from the current batch (no external queue or memory bank).
-
-Gotchas:
-- Batch size sensitivity below 256 — fewer in-batch negatives hurts quality.
-- Color jitter strength s=1.0 is NOT the torchvision default (s=0.4).
-- Temperature is sensitive: 0.5 works for batch_size=256, tune for other sizes.
+Reference implementation: https://github.com/google-research/simclr
 """
 from __future__ import annotations
 
@@ -39,22 +30,39 @@ from core.projection import ProjectionHead
 
 
 class SimCLRv1Module(BaseSSLModule):
-    """SimCLR v1 — contrastive learning with 2-layer projection head.
+    """SimCLR v1 (Chen et al., ICML 2020).
+
+    A Simple Framework for Contrastive Learning of Visual Representations.
+
+    Two augmented views of each image are encoded by a shared backbone and
+    projected through a 2-layer MLP (2048->2048->128). The symmetric NT-Xent
+    loss (implemented via InfoNCELoss with queue=None) brings views of the same
+    image together while pushing views of different images apart within the
+    batch. Loss is computed on the projection output z; downstream evaluation
+    should use the backbone representation h.
 
     Paper: "A Simple Framework for Contrastive Learning of Visual Representations"
     Authors: Ting Chen, Simon Kornblith, Mohammad Norouzi, Geoffrey Hinton
     Venue: ICML 2020
     arXiv: https://arxiv.org/abs/2002.05709
 
-    Batch-size sensitivity: Because all negatives come from the current batch
-    (no external bank or queue), the effective number of negatives is
-    batch_size - 1.  Performance degrades significantly below batch size ~256.
-    Use LARS optimizer for large-batch training (>= 256).
+    Algorithm:
+    1. Augment each image twice with strong augmentation (s=1.0 color jitter,
+       Gaussian blur, random grayscale, random crop + resize).
+    2. Encode both views: h_i = backbone(x_i), h_j = backbone(x_j).
+    3. Project: z_i = projector(h_i), z_j = projector(h_j).
+    4. Compute symmetric NT-Xent loss on (z_i, z_j).
 
     Gotchas:
-    - Batch size sensitivity: below ~256, representation quality degrades.
-    - Color jitter strength s=1.0 (not the torchvision default s=0.4).
-    - n_views=2 required in config.
+    - Color jitter strength must be s=1.0 (not torchvision default ~0.4).
+      ContrastiveAugmentation(strong=True) handles this.
+    - Performance degrades sharply below batch_size=256 because effective
+      negatives = 2*(batch_size-1). Use LARS optimizer for batch sizes >1024.
+    - Loss is computed on z (projection), but evaluation must use h (backbone).
+      Do not evaluate downstream tasks on z.
+    - InfoNCELoss internally L2-normalizes inputs; do not pre-normalize.
+
+    Reference implementation: https://github.com/google-research/simclr
     """
 
     def __init__(self, cfg: TrainConfig) -> None:
@@ -95,16 +103,29 @@ class SimCLRv1Module(BaseSSLModule):
 
 
 class SimCLRv2Module(SimCLRv1Module):
-    """SimCLR v2 — 3-layer projection head, otherwise identical to v1.
+    """SimCLR v2 (Chen et al., NeurIPS 2020).
+
+    Big Self-Supervised Models are Strong Semi-Supervised Learners.
+
+    Extends SimCLR v1 with a deeper 3-layer projection head
+    (2048->2048->2048->128). Only the projection head depth changes;
+    backbone, loss, and augmentation are identical to v1. This
+    implementation covers the pretraining stage only; the semi-supervised
+    distillation stage is deferred to v2 scope.
 
     Paper: "Big Self-Supervised Models are Strong Semi-Supervised Learners"
     Authors: Ting Chen, Simon Kornblith, Kevin Swersky, Mohammad Norouzi, Geoffrey Hinton
     Venue: NeurIPS 2020
     arXiv: https://arxiv.org/abs/2006.10029
 
-    The only difference from v1 is a deeper (3-layer) projection head, which
-    the paper shows improves representation quality, especially for larger
-    backbones.  Weight decay sensitivity differs from v1 — tune carefully.
+    Gotchas:
+    - Weight decay scales with projection head depth -- v1 fine-tune
+      hyperparameters do not transfer directly to v2. The larger projection
+      head (3 layers vs 2) requires more regularization.
+    - The num_layers=2 -> num_layers=3 switch is controlled by this subclass,
+      not by YAML config (per D-02).
+
+    Reference implementation: https://github.com/google-research/simclr
     """
 
     def build_projector(self) -> nn.Module:
