@@ -1,0 +1,29 @@
+# MoCo v1 (He et al., CVPR 2020) -- ResNet-18 tutorial config
+# Momentum Contrast for Unsupervised Visual Representation Learning
+#
+# Queue-based contrastive learning with momentum encoder.
+# Uses bare nn.Linear projection (128-dim), not MLP.
+# For batch sizes > 1024, consider LARS optimizer.
+#
+# Temperature 0.07 is much sharper than SimCLR's 0.5 because
+# the queue provides many more negatives (65536 vs 2*(B-1)).
+
+method: moco_v1
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 0.03
+weight_decay: 1e-4
+optimizer: sgd
+scheduler: warmup_cosine
+n_views: 2
+data_dir: data
+num_workers: 4
+
+moco:
+  temperature: 0.07
+  queue_size: 65536
+  momentum: 0.999

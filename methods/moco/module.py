@@ -59,6 +59,16 @@ class MoCoV1Module(BaseSSLModule):
     6. EMA update of momentum encoder in on_train_batch_end.
 
     Gotchas:
+    - Shuffled BN is required for multi-GPU training to prevent BN statistics
+      leakage between query and key encoders. This tutorial implementation is
+      single-GPU only and does not implement shuffled BN. On multi-GPU setups,
+      the key encoder's BN would leak information about other samples in the
+      batch, effectively creating a shortcut that bypasses contrastive learning.
+    - m=0.9 produces significantly worse results than m=0.999. Lower momentum
+      means the target encoder diverges faster from the online encoder, reducing
+      key consistency across the queue. The queue stores keys produced at
+      different training steps, so a fast-changing encoder makes older keys
+      stale and inconsistent with recent ones.
     - Queue must be updated AFTER loss computation, not before. Enqueueing
       current keys before computing loss would make them appear as both
       positive and negative, breaking the contrastive objective.
@@ -149,17 +159,28 @@ class MoCoV2Module(MoCoV1Module):
 
     Improved Baselines with Momentum Contrastive Learning.
 
-    Extends MoCo v1 with a 2-layer MLP projection head (matching SimCLR's
-    finding that deeper projectors improve representation quality). All other
-    components -- momentum encoder, queue, InfoNCE loss, EMA schedule -- are
-    inherited unchanged from MoCoV1Module.
+    This is a "5-line diff from v1": SimCLR's architecture improvements (2-layer
+    MLP projection head, stronger augmentation with Gaussian blur, cosine LR
+    schedule) applied to MoCo's momentum-queue framework. All other components
+    -- momentum encoder, queue, InfoNCE loss, EMA schedule -- are inherited
+    unchanged from MoCoV1Module.
 
     Paper: "Improved Baselines with Momentum Contrastive Learning"
     Authors: Xinlei Chen, Haoqi Fan, Ross Girshick, Kaiming He
+    Venue: arXiv 2020 (tech report)
     arXiv: https://arxiv.org/abs/2003.04297
 
+    Changes from v1:
+    1. 2-layer MLP projection head replaces bare nn.Linear (128-d output kept).
+    2. Strong augmentation: s=1.0 color jitter + Gaussian blur (from SimCLR).
+    3. Cosine learning rate schedule (warmup_cosine).
+
     Gotchas:
-    - The only change from v1 is the projection head: nn.Linear -> 2-layer MLP.
+    - MoCo v2 is essentially "SimCLR's architecture improvements applied to
+      MoCo". The paper demonstrates that these improvements are orthogonal to
+      the contrastive mechanism (in-batch vs. queue).
+    - The only code change from v1 is the projection head: nn.Linear -> 2-layer
+      MLP. Augmentation and scheduler changes are config-level, not code-level.
     - Weight decay and learning rate may need re-tuning when switching from v1
       to v2 due to the additional projection head parameters.
 

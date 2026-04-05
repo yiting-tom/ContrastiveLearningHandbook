@@ -1,0 +1,29 @@
+# MoCo v2 (Chen et al., 2020) -- ResNet-18 tutorial config
+# Improved Baselines with Momentum Contrastive Learning
+#
+# MoCo v1 + 2-layer MLP projection head + strong augmentation (Gaussian blur).
+# Uses cosine LR schedule. This is a "5-line diff from v1".
+# Strong augmentation (s=1.0 color jitter, Gaussian blur) is critical.
+#
+# The only architecture change from v1 is nn.Linear -> 2-layer MLP head.
+# All other hyperparameters remain the same.
+
+method: moco_v2
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 0.03
+weight_decay: 1e-4
+optimizer: sgd
+scheduler: warmup_cosine
+n_views: 2
+data_dir: data
+num_workers: 4
+
+moco:
+  temperature: 0.07
+  queue_size: 65536
+  momentum: 0.999
