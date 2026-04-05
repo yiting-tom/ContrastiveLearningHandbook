@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-04-05T13:40:22.505Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-04-05T13:55:13.038Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 20
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Position
 
 Phase: 04 (moco) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Next: 03-02-PLAN.md (YAML configs)
 Status: Ready to execute
 Last activity: 2026-04-05
@@ -86,6 +86,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 03-simclr P02 | 626 | 2 tasks | 5 files |
 | Phase 03-simclr P03 | 515 | 2 tasks | 2 files |
 | Phase 04-moco P01 | 143 | 2 tasks | 3 files |
+| Phase 04-moco P02 | 780 | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,9 @@ Recent decisions affecting current work:
 - [Phase 03-simclr]: DOC-02 docstrings follow invariant_spread reference pattern with paper, authors, venue, arXiv, gotchas, reference implementation
 - [Phase 04-moco]: Queue stored as [dim, queue_size] for direct matrix multiply with query vectors
 - [Phase 04-moco]: Circular buffer with split-write for batches that straddle buffer boundary
+- [Phase 04-moco]: MoCo v1 uses bare nn.Linear projection (no BN/hidden layer); v2 overrides only build_projector() with 2-layer MLP ProjectionHead
+- [Phase 04-moco]: Queue updated AFTER loss computation to avoid positive-in-negatives corruption (D-07)
+- [Phase 04-moco]: Constant EMA momentum (base==end=0.999) for MoCo v1/v2; cosine ramp reserved for BYOL/DINO
 
 ### Pending Todos
 
@@ -134,7 +138,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-05T13:40:22.501Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-04-05T13:55:13.034Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
 Next action: Execute 03-02-PLAN.md (YAML configs for SimCLR v1/v2)

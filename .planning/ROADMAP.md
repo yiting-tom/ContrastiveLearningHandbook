@@ -107,7 +107,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — `MomentumQueue(queue_size, dim)` FIFO buffer with register_buffer, L2-normalized init, pointer wrap-around, comprehensive unit tests, core/__init__.py re-export
-- [ ] 04-02-PLAN.md — `MoCoV1Module` + `MoCoV2Module` implementation with momentum encoder, FIFO queue, InfoNCELoss queue mode, EMA via BaseSSLModule hook, dispatcher registration, and full test suite
+- [x] 04-02-PLAN.md — `MoCoV1Module` + `MoCoV2Module` implementation with momentum encoder, FIFO queue, InfoNCELoss queue mode, EMA via BaseSSLModule hook, dispatcher registration, and full test suite
 - [ ] 04-03-PLAN.md — Per-method YAML configs (v1 SGD, v2 SGD), DOC-02 docstrings with shuffled-BN and momentum sensitivity gotchas, end-to-end smoke tests
 
 **UI hint**: no
@@ -278,7 +278,7 @@ Plans:
 | 1. Foundation | 7/7 | Complete   | 2026-03-31 |
 | 2. Proxy Tasks Era | 5/5 | Complete | 2026-04-02 |
 | 3. SimCLR | 3/3 | Complete | - |
-| 4. MoCo | 0/3 | Planning | - |
+| 4. MoCo | 2/3 | In Progress|  |
 | 5. SwAV and InfoMin | 0/7 | Not started | - |
 | 6. No-Negative Methods | 0/7 | Not started | - |
 | 7. Transformer Era | 0/8 | Not started | - |
