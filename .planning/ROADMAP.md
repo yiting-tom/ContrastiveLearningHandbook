@@ -103,15 +103,12 @@ Plans:
   4. `MoCoV1Module` and `MoCoV2Module` both train 5 epochs without loss divergence; MoCo v2 uses the 2-layer MLP projection head while v1 uses a single FC layer
   5. Both methods are selectable via `method: moco_v1` and `method: moco_v2` in YAML
 
-**Plans**: 6 plans
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Implement `MomentumQueue(queue_size, dim)` — FIFO buffer initialized with `torch.randn` (L2-normalized), pointer tracking, `enqueue_dequeue(keys)` method that enqueues new keys and returns nothing (queue is read via `get_negatives()`), `get_negatives()` returning the current queue contents detached; write unit tests for pointer wrap-around and size invariant
-- [ ] 04-02: Implement momentum encoder setup pattern — `copy.deepcopy(backbone)` + `deactivate_requires_grad(backbone_ema)` immediately after; write utility `assert_no_ema_in_optimizer(module)` that checks optimizer param group ids do not intersect EMA parameter ids
-- [ ] 04-03: Implement asymmetric InfoNCE loss (query vs. queue negatives) — query `q` compared against positive key `k+` and all K queue keys; keys are detached; queue updated after loss computation
-- [ ] 04-04: Implement `MoCoV1Module(BaseSSLModule)` — FC projection, FIFO queue (K=65536), EMA momentum encoder (m=0.999), shuffled-BN note documented in docstring (single-GPU only in this tutorial; multi-GPU caveat documented); `EMAUpdater` in `on_train_batch_end`; register as `moco_v1`
-- [ ] 04-05: Implement `MoCoV2Module(MoCoV1Module)` — override projection head to 2-layer MLP, add Gaussian blur to augmentation config, use cosine LR schedule by default; document that this is a 5-line diff from v1; register as `moco_v2`
-- [ ] 04-06: Write per-method YAML configs; add DOC-02 docstrings with m=0.9 vs m=0.999 sensitivity gotcha documented explicitly; smoke-test both for 3 epochs
+- [ ] 04-01-PLAN.md — `MomentumQueue(queue_size, dim)` FIFO buffer with register_buffer, L2-normalized init, pointer wrap-around, comprehensive unit tests, core/__init__.py re-export
+- [ ] 04-02-PLAN.md — `MoCoV1Module` + `MoCoV2Module` implementation with momentum encoder, FIFO queue, InfoNCELoss queue mode, EMA via BaseSSLModule hook, dispatcher registration, and full test suite
+- [ ] 04-03-PLAN.md — Per-method YAML configs (v1 SGD, v2 SGD), DOC-02 docstrings with shuffled-BN and momentum sensitivity gotchas, end-to-end smoke tests
 
 **UI hint**: no
 
@@ -280,8 +277,8 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete   | 2026-03-31 |
 | 2. Proxy Tasks Era | 5/5 | Complete | 2026-04-02 |
-| 3. SimCLR | 1/3 | Executing | - |
-| 4. MoCo | 0/6 | Not started | - |
+| 3. SimCLR | 3/3 | Complete | - |
+| 4. MoCo | 0/3 | Planning | - |
 | 5. SwAV and InfoMin | 0/7 | Not started | - |
 | 6. No-Negative Methods | 0/7 | Not started | - |
 | 7. Transformer Era | 0/8 | Not started | - |
