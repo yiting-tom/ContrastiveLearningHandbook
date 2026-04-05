@@ -5,3 +5,4 @@
 import methods.instance_discrimination  # noqa: F401
 import methods.invariant_spread         # noqa: F401
 import methods.simclr                   # noqa: F401
+import methods.moco                     # noqa: F401

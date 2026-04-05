@@ -239,12 +239,14 @@ def test_moco_v2_train_5_epochs(large_imagefolder):
     import methods.moco  # noqa: F401  # trigger registration
     from methods.moco.module import MoCoV2Module
 
+    # MoCo v2's 2-layer MLP (with BN) needs higher lr and softer temperature
+    # to converge on tiny toy data compared to v1's bare linear head.
     cfg = _make_cfg(
         method="moco_v2",
-        lr=0.01,
+        lr=0.03,
         batch_size=16,
-        max_epochs=5,
-        moco=MoCoConfig(queue_size=64, temperature=0.07, momentum=0.999),
+        max_epochs=10,
+        moco=MoCoConfig(queue_size=64, temperature=0.2, momentum=0.999),
     )
     model = MoCoV2Module(cfg)
     dm = SSLDataModule(
@@ -257,7 +259,7 @@ def test_moco_v2_train_5_epochs(large_imagefolder):
     )
     tracker = LossTracker()
     trainer = L.Trainer(
-        max_epochs=5,
+        max_epochs=10,
         accelerator="cpu",
         logger=False,
         enable_checkpointing=False,
@@ -267,7 +269,7 @@ def test_moco_v2_train_5_epochs(large_imagefolder):
     )
     trainer.fit(model, dm)
 
-    assert len(tracker.epoch_losses) == 5, f"Expected 5 epochs, got {len(tracker.epoch_losses)}"
+    assert len(tracker.epoch_losses) == 10, f"Expected 10 epochs, got {len(tracker.epoch_losses)}"
     for i, loss in enumerate(tracker.epoch_losses):
         assert loss == loss, f"Epoch {i} loss is NaN"
         assert abs(loss) < 1e6, f"Epoch {i} loss is not finite: {loss}"
