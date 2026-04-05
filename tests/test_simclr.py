@@ -386,3 +386,132 @@ def test_simclr_v2_yaml_config_loads():
     assert cfg.simclr is not None
     assert cfg.simclr.temperature == 0.5
     assert cfg.simclr.projection_dim == 128
+
+
+# ---------------------------------------------------------------------------
+# Smoke Tests (03-03)
+# ---------------------------------------------------------------------------
+
+def test_simclr_v1_smoke_3_epochs(tmp_imagefolder):
+    """Smoke test: SimCLR v1 trains 3 epochs from YAML config without divergence."""
+    import yaml as _yaml
+
+    from methods.simclr.module import SimCLRv1Module
+    from core.dispatcher import method_dispatcher, register_method, available_methods
+
+    if "simclr_v1" not in available_methods():
+        register_method("simclr_v1", SimCLRv1Module)
+
+    with open("configs/simclr_v1_resnet18.yaml") as fh:
+        raw = _yaml.safe_load(fh)
+
+    raw["data_dir"] = str(tmp_imagefolder)
+    raw["max_epochs"] = 3
+    raw["warmup_epochs"] = 0
+    raw["batch_size"] = 4
+    raw["num_workers"] = 0
+
+    cfg = TrainConfig.model_validate(raw)
+    model = method_dispatcher(cfg)
+    dm = SSLDataModule(
+        data_dir=cfg.data_dir,
+        n_views=2,
+        batch_size=4,
+        num_workers=0,
+        size=32,
+        strong=True,
+    )
+    tracker = LossTracker()
+    trainer = L.Trainer(
+        max_epochs=3,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        callbacks=[tracker],
+    )
+    trainer.fit(model, dm)
+
+    # All epoch losses must be finite
+    assert len(tracker.epoch_losses) == 3, f"Expected 3 epochs, got {len(tracker.epoch_losses)}"
+    for i, loss in enumerate(tracker.epoch_losses):
+        assert loss == loss, f"Epoch {i} loss is NaN"
+        assert abs(loss) < 1e6, f"Epoch {i} loss diverged: {loss}"
+
+
+def test_simclr_v2_smoke_3_epochs(tmp_imagefolder):
+    """Smoke test: SimCLR v2 trains 3 epochs from YAML config without divergence."""
+    import yaml as _yaml
+
+    from methods.simclr.module import SimCLRv2Module
+    from core.dispatcher import method_dispatcher, register_method, available_methods
+
+    if "simclr_v2" not in available_methods():
+        register_method("simclr_v2", SimCLRv2Module)
+
+    with open("configs/simclr_v2_resnet18.yaml") as fh:
+        raw = _yaml.safe_load(fh)
+
+    raw["data_dir"] = str(tmp_imagefolder)
+    raw["max_epochs"] = 3
+    raw["warmup_epochs"] = 0
+    raw["batch_size"] = 4
+    raw["num_workers"] = 0
+
+    cfg = TrainConfig.model_validate(raw)
+    model = method_dispatcher(cfg)
+    dm = SSLDataModule(
+        data_dir=cfg.data_dir,
+        n_views=2,
+        batch_size=4,
+        num_workers=0,
+        size=32,
+        strong=True,
+    )
+    tracker = LossTracker()
+    trainer = L.Trainer(
+        max_epochs=3,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        callbacks=[tracker],
+    )
+    trainer.fit(model, dm)
+
+    # All epoch losses must be finite
+    assert len(tracker.epoch_losses) == 3, f"Expected 3 epochs, got {len(tracker.epoch_losses)}"
+    for i, loss in enumerate(tracker.epoch_losses):
+        assert loss == loss, f"Epoch {i} loss is NaN"
+        assert abs(loss) < 1e6, f"Epoch {i} loss diverged: {loss}"
+
+    # Confirm v2 projector has exactly 3 nn.Linear layers
+    linear_count = sum(1 for m in model.projector.modules() if isinstance(m, nn.Linear))
+    assert linear_count == 3, f"Expected 3 linear layers in v2 projector, got {linear_count}"
+
+
+def test_simclr_v1_docstring_has_doc02():
+    """SimCLRv1Module docstring meets DOC-02 standard."""
+    from methods.simclr.module import SimCLRv1Module
+
+    doc = SimCLRv1Module.__doc__
+    assert doc is not None, "SimCLRv1Module must have a docstring"
+    assert "arXiv" in doc, "Docstring must contain arXiv link"
+    assert "Gotcha" in doc or "gotcha" in doc.lower(), "Docstring must contain gotchas"
+    assert "Reference implementation" in doc, "Docstring must contain reference URL"
+    assert "ICML 2020" in doc, "Docstring must contain venue and year"
+
+
+def test_simclr_v2_docstring_has_doc02():
+    """SimCLRv2Module docstring meets DOC-02 standard."""
+    from methods.simclr.module import SimCLRv2Module
+
+    doc = SimCLRv2Module.__doc__
+    assert doc is not None, "SimCLRv2Module must have a docstring"
+    assert "arXiv" in doc, "Docstring must contain arXiv link"
+    assert "Reference implementation" in doc, "Docstring must contain reference URL"
+    assert "NeurIPS 2020" in doc, "Docstring must contain venue and year"
+    assert "3-layer" in doc, "Docstring must mention 3-layer projection head"
+    assert "weight decay" in doc.lower() or "Weight decay" in doc, (
+        "Docstring must document weight decay sensitivity gotcha"
+    )
