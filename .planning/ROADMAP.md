@@ -84,7 +84,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — SimCLRv1Module + SimCLRv2Module implementation with dispatcher registration and comprehensive test suite (NT-Xent symmetry, projection head depth, training, dispatcher)
+- [x] 03-01-PLAN.md — SimCLRv1Module + SimCLRv2Module implementation with dispatcher registration and comprehensive test suite (NT-Xent symmetry, projection head depth, training, dispatcher)
 - [ ] 03-02-PLAN.md — Per-method YAML configs (v1 AdamW, v1 LARS, v2) and augmentation visualization script at tools/visualize_augmentations.py
 - [ ] 03-03-PLAN.md — DOC-02 docstrings for both modules and end-to-end smoke tests from YAML configs
 
@@ -280,7 +280,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete   | 2026-03-31 |
 | 2. Proxy Tasks Era | 5/5 | Complete | 2026-04-02 |
-| 3. SimCLR | 0/3 | Planning complete | - |
+| 3. SimCLR | 1/3 | Executing | - |
 | 4. MoCo | 0/6 | Not started | - |
 | 5. SwAV and InfoMin | 0/7 | Not started | - |
 | 6. No-Negative Methods | 0/7 | Not started | - |
