@@ -81,15 +81,12 @@ Plans:
   4. Both methods are selectable via `method: simclr_v1` and `method: simclr_v2` in YAML; per-method configs exist in `configs/`
   5. LARS optimizer activates when `optimizer: lars` is set in config; AdamW is the default
 
-**Plans**: 6 plans
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Implement symmetric NT-Xent loss — compute normalized pairwise similarity matrix for 2N embeddings, mask diagonal, apply temperature scaling, return mean cross-entropy; write unit test asserting symmetry and that loss for identical views equals minimum possible value
-- [ ] 03-02: Implement `SimCLRv1Module(BaseSSLModule)` — shared encoder for both views, 2-layer `ProjectionHead` (2048→2048→128), symmetric NT-Xent on `z`, return both `h` and `z`; register in dispatcher as `simclr_v1`
-- [ ] 03-03: Implement `SimCLRv2Module(BaseSSLModule)` as subclass or config variant of v1 with 3-layer projection head; document weight-decay sensitivity difference from v1 in docstring; register as `simclr_v2`
-- [ ] 03-04: Validate augmentation pipeline — write a visual inspection script that saves a grid of 8 augmented views from one image; confirm strong color jitter (s=1.0) and Gaussian blur are present; add assertion or comment in config that defaults to strong augmentation
-- [ ] 03-05: Write per-method YAML configs with LARS optimizer variant and AdamW variant; add SimCLR batch-size sensitivity note to both configs as a YAML comment
-- [ ] 03-06: Add DOC-02 docstrings to both modules (paper, authors, venue, year, arXiv, algorithm description, gotcha list, reference implementation); smoke-test both configs for 3 epochs
+- [ ] 03-01-PLAN.md — SimCLRv1Module + SimCLRv2Module implementation with dispatcher registration and comprehensive test suite (NT-Xent symmetry, projection head depth, training, dispatcher)
+- [ ] 03-02-PLAN.md — Per-method YAML configs (v1 AdamW, v1 LARS, v2) and augmentation visualization script at tools/visualize_augmentations.py
+- [ ] 03-03-PLAN.md — DOC-02 docstrings for both modules and end-to-end smoke tests from YAML configs
 
 **UI hint**: no
 
@@ -125,7 +122,7 @@ Plans:
 **Depends on**: Phase 1, Phase 3 (InfoMin reuses SimCLR)
 **Requirements**: ERA2-05, ERA2-06, INFRA-04
 **Success Criteria** (what must be TRUE):
-  1. `MultiCropDataset` with `n_large_crops=2, n_small_crops=6` yields batches where large crops are 224×224 and small crops are 96×96; configurable crop counts via YAML
+  1. `MultiCropDataset` with `n_large_crops=2, n_small_crops=6` yields batches where large crops are 224x224 and small crops are 96x96; configurable crop counts via YAML
   2. Sinkhorn-Knopp iteration produces a code matrix `Q` that is doubly stochastic — row sums and column sums are both uniform; verified by assertion in a unit test
   3. Prototype vectors are frozen during the first `freeze_prototypes_epochs` epochs; after that epoch boundary, gradients flow through the prototype layer
   4. `SwAVModule` trains for 5 epochs without loss divergence; prototype vectors remain L2-normalized after each optimizer step
@@ -155,16 +152,16 @@ Plans:
   2. `SimSiamModule` trains for 5 epochs; removing `.detach()` from `z` in the loss causes immediate collapse to loss=-1.0 within 2 epochs (documented via a comment/test), confirming the stop-gradient is load-bearing
   3. `BarlowTwinsModule` trains for 5 epochs; the cross-correlation matrix `C` has diagonal values > 0.5 by epoch 5 on CIFAR-10 (verified in a diagnostic log)
   4. All three methods are selectable via `method: byol`, `method: simsiam`, `method: barlow_twins` in YAML
-  5. EMA momentum schedule (cosine 0.996→1.0) is used in BYOL; a unit test asserts momentum at step 0 and step `total_steps` match expected values
+  5. EMA momentum schedule (cosine 0.996->1.0) is used in BYOL; a unit test asserts momentum at step 0 and step `total_steps` match expected values
 
 **Plans**: 7 plans
 
 Plans:
-- [ ] 06-01: Implement `PredictorHead` — reuse or extend `ProjectionHead` for standard 2-layer predictor (BYOL) and bottleneck 2-layer predictor (SimSiam: 2048→512→2048, BN on all layers including output, no ReLU on output); expose both variants via `predictor_type` config
-- [ ] 06-02: Implement `BYOLModule(BaseSSLModule)` — online network (backbone + projector + predictor) and target network (backbone + projector via EMA, no predictor); MSE loss on L2-normalized outputs (`2 - 2·cosine_similarity`); cosine-scheduled EMA momentum via `EMAUpdater`; log `train/embedding_std`; register as `byol`
+- [ ] 06-01: Implement `PredictorHead` — reuse or extend `ProjectionHead` for standard 2-layer predictor (BYOL) and bottleneck 2-layer predictor (SimSiam: 2048->512->2048, BN on all layers including output, no ReLU on output); expose both variants via `predictor_type` config
+- [ ] 06-02: Implement `BYOLModule(BaseSSLModule)` — online network (backbone + projector + predictor) and target network (backbone + projector via EMA, no predictor); MSE loss on L2-normalized outputs (`2 - 2*cosine_similarity`); cosine-scheduled EMA momentum via `EMAUpdater`; log `train/embedding_std`; register as `byol`
 - [ ] 06-03: Implement stop-gradient validation for `BYOLModule` — unit test that asserts target branch parameters receive zero gradient during `training_step`; add comment marking the stop-gradient site in source
 - [ ] 06-04: Implement `SimSiamModule(BaseSSLModule)` — shared encoder for both views; bottleneck predictor; symmetric stop-gradient loss `-(cosim(p1, z2.detach()) + cosim(p2, z1.detach())) / 2`; log `train/embedding_std`; add comment at `.detach()` call with collapse warning; register as `simsiam`
-- [ ] 06-05: Implement `BarlowTwinsModule(BaseSSLModule)` — high-dimensional projector (8192-dim output, 3 layers, BN+ReLU on first 2, BN on output); cross-correlation matrix normalized by batch size; loss driving `C` toward identity; λ=5e-3 as configurable parameter; log diagonal mean of `C`; register as `barlow_twins`
+- [ ] 06-05: Implement `BarlowTwinsModule(BaseSSLModule)` — high-dimensional projector (8192-dim output, 3 layers, BN+ReLU on first 2, BN on output); cross-correlation matrix normalized by batch size; loss driving `C` toward identity; lambda=5e-3 as configurable parameter; log diagonal mean of `C`; register as `barlow_twins`
 - [ ] 06-06: Add collapse monitoring to all three modules — `z.std(dim=0).mean()` logged as `train/embedding_std`; add docstring note that collapse is indicated when this value approaches 0
 - [ ] 06-07: Write per-method YAML configs; add DOC-02 docstrings with collapse gotchas prominently listed; smoke-test all three for 3 epochs
 
@@ -190,7 +187,7 @@ Plans:
 - [ ] 07-02: Implement `MoCoV3Module(BaseSSLModule)` — ViT backbone via timm, in-batch symmetric contrastive loss (no queue), momentum encoder (m=0.99), prediction MLP; freeze patch projection layer immediately after model construction; use AdamW + gradient clipping via `Trainer(gradient_clip_val=...)`; register as `moco_v3`
 - [ ] 07-03: Write unit test for `MoCoV3Module` that asserts `backbone.patch_embed.proj.weight.requires_grad == False` and `backbone.patch_embed.proj.bias.requires_grad == False` after construction
 - [ ] 07-04: Implement DINO multi-crop assignment logic — teacher receives only the 2 global crops; student receives all 2+N crops; implement the cross-entropy loss `sum_over_student_crops(-q_teacher * log_softmax(student_logits / tau_s))`
-- [ ] 07-05: Implement `DINOModule(BaseSSLModule)` — student (online) and teacher (EMA, no gradient); centering vector updated with teacher output before loss computation; sharpening via low teacher temperature (cosine warmup from 0.04→0.07); output dim 65536; gradient clipping max_norm=3.0; `MultiCropDataset` integration (2 global + 6 local); register as `dino`
+- [ ] 07-05: Implement `DINOModule(BaseSSLModule)` — student (online) and teacher (EMA, no gradient); centering vector updated with teacher output before loss computation; sharpening via low teacher temperature (cosine warmup from 0.04->0.07); output dim 65536; gradient clipping max_norm=3.0; `MultiCropDataset` integration (2 global + 6 local); register as `dino`
 - [ ] 07-06: Implement centering unit test — assert that centering vector equals running mean of teacher outputs after 3 steps; assert centering update happens before loss computation in call order
 - [ ] 07-07: Implement `DINOv2Tutorial` — standalone `eval/dinov2_demo.py` script that loads pretrained DINOv2 via timm or `facebookresearch/dinov2`, runs k-NN evaluation and linear probing on a configurable dataset; document register-token API difference in comments; clarify "DINOv3" does not exist in the docstring
 - [ ] 07-08: Write per-method YAML configs for moco_v3 and dino; add DOC-02 docstrings; smoke-test for 3 epochs
@@ -243,7 +240,7 @@ Plans:
 - [ ] 09-03: Implement `eval/tsne_vis.py` — PCA pre-reduction to 50 dims, `TSNE(init='pca', metric='cosine', learning_rate='auto')`, sweep 3 perplexity values, save each plot with perplexity in filename, add warning comment about not interpreting global distances from t-SNE
 - [ ] 09-04: Implement `eval/umap_vis.py` — `umap.UMAP(metric='cosine', random_state=42)`, run on up to 5000 samples, return reducer for new-sample mapping; print `torchdr` suggestion for >50K datasets; save PNG
 - [ ] 09-05: Implement `eval/finetune.py` and `FinetuneModule` — unfreezes backbone, two LR param groups (backbone 1e-4, head 1e-3), AdamW + warmup-cosine scheduler, `freeze_bn=True` option that keeps BN in eval mode; config under `eval.finetune` in YAML
-- [ ] 09-06: Implement `eval/cam_vis.py` — `pytorch-grad-cam` integration; `EigenCAM` as default (no classifier required); `GradCAM` when `classifier` argument provided; architecture-aware target layer selection (ResNet: `backbone.layer4[-1]`; ViT: `backbone.blocks[-1].norm1` with `vit_reshape_transform`); save overlay images for 8–16 reference images
+- [ ] 09-06: Implement `eval/cam_vis.py` — `pytorch-grad-cam` integration; `EigenCAM` as default (no classifier required); `GradCAM` when `classifier` argument provided; architecture-aware target layer selection (ResNet: `backbone.layer4[-1]`; ViT: `backbone.blocks[-1].norm1` with `vit_reshape_transform`); save overlay images for 8-16 reference images
 - [ ] 09-07: Write integration test that runs the full evaluation pipeline (k-NN + linear probe + t-SNE + UMAP + CAM) on a SimCLR checkpoint trained for 5 epochs on CIFAR-10; assert all output files exist and `eval/knn_acc > 0.1`
 
 **UI hint**: no
@@ -265,9 +262,9 @@ Plans:
 
 Plans:
 - [ ] 10-01: Write `README.md` — project overview, installation section, quickstart (train SimCLR in one command, run k-NN evaluation), config system explanation, method table (all 14 v1 methods with era/venue/contribution), evaluation instructions, link to tutorial notebook
-- [ ] 10-02: Audit and complete DOC-02 docstrings for all Phase 2–8 modules — verify each has paper title, authors, venue, year, arXiv/DOI, 2-sentence description, gotcha list, reference implementation URL; fill gaps
+- [ ] 10-02: Audit and complete DOC-02 docstrings for all Phase 2-8 modules — verify each has paper title, authors, venue, year, arXiv/DOI, 2-sentence description, gotcha list, reference implementation URL; fill gaps
 - [ ] 10-03: Write tutorial section (a): "How to add a new method" — step-by-step guide showing subclassing `BaseSSLModule`, implementing `training_step` and `build_projector`, registering in `method_dispatcher`, and writing a YAML config
-- [ ] 10-04: Write tutorial section (b): "Running an experiment end-to-end" — annotated walkthrough of config → `python train.py --config configs/simclr_resnet50.yaml` → checkpoint → `python eval/linear_probe.py --ckpt ...` → result; include expected output values on CIFAR-10
+- [ ] 10-04: Write tutorial section (b): "Running an experiment end-to-end" — annotated walkthrough of config -> `python train.py --config configs/simclr_resnet50.yaml` -> checkpoint -> `python eval/linear_probe.py --ckpt ...` -> result; include expected output values on CIFAR-10
 - [ ] 10-05: Write tutorial section (c): "Comparing two methods" — demonstrates loading two checkpoints, running the evaluation suite on both, and producing a comparison table of k-NN accuracy, linear probe accuracy, and t-SNE plots side by side
 - [ ] 10-06: Assemble `notebooks/walkthrough.ipynb` or `docs/tutorial.md` from sections (a)+(b)+(c); add era-by-era narrative explaining what changed conceptually between proxy tasks, in-batch contrastive, queue-based, no-negative, and transformer-era methods; final review pass for broken links and missing configs
 
@@ -277,13 +274,13 @@ Plans:
 
 ## Progress
 
-**Execution Order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+**Execution Order:** 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 7/7 | Complete   | 2026-03-31 |
-| 2. Proxy Tasks Era | 0/5 | Not started | - |
-| 3. SimCLR | 0/6 | Not started | - |
+| 2. Proxy Tasks Era | 5/5 | Complete | 2026-04-02 |
+| 3. SimCLR | 0/3 | Planning complete | - |
 | 4. MoCo | 0/6 | Not started | - |
 | 5. SwAV and InfoMin | 0/7 | Not started | - |
 | 6. No-Negative Methods | 0/7 | Not started | - |
