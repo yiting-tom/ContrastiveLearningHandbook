@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 4 context gathered (discuss mode)
-last_updated: "2026-04-05T04:12:10.632Z"
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-04-05T13:40:22.505Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 10
   completed_phases: 3
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 18
+  completed_plans: 16
   percent: 20
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Any contrastive learning method can be implemented by conforming to a shared interface and immediately work with the same dataset pipeline, timm backbone, and Lightning training loop.
-**Current focus:** Phase 03 — simclr
+**Current focus:** Phase 04 — moco
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
+Phase: 04 (moco) — EXECUTING
+Plan: 2 of 3
 Next: 03-02-PLAN.md (YAML configs)
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-04-05
 
 Progress: [██░░░░░░░░] 20%
@@ -85,6 +85,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 03-simclr P01 | 404 | 2 tasks | 4 files |
 | Phase 03-simclr P02 | 626 | 2 tasks | 5 files |
 | Phase 03-simclr P03 | 515 | 2 tasks | 2 files |
+| Phase 04-moco P01 | 143 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ Recent decisions affecting current work:
 - [Phase 03-simclr]: YAML configs document batch-size sensitivity in comments for tutorial users
 - [Phase 03-simclr]: Visualization script uses Agg backend for headless operation, sys.path for imports
 - [Phase 03-simclr]: DOC-02 docstrings follow invariant_spread reference pattern with paper, authors, venue, arXiv, gotchas, reference implementation
+- [Phase 04-moco]: Queue stored as [dim, queue_size] for direct matrix multiply with query vectors
+- [Phase 04-moco]: Circular buffer with split-write for batches that straddle buffer boundary
 
 ### Pending Todos
 
@@ -131,7 +134,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-05T04:12:10.627Z
-Stopped at: Phase 4 context gathered (discuss mode)
-Resume file: .planning/phases/04-moco/04-CONTEXT.md
+Last session: 2026-04-05T13:40:22.501Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
 Next action: Execute 03-02-PLAN.md (YAML configs for SimCLR v1/v2)

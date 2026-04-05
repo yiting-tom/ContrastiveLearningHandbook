@@ -106,7 +106,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — `MomentumQueue(queue_size, dim)` FIFO buffer with register_buffer, L2-normalized init, pointer wrap-around, comprehensive unit tests, core/__init__.py re-export
+- [x] 04-01-PLAN.md — `MomentumQueue(queue_size, dim)` FIFO buffer with register_buffer, L2-normalized init, pointer wrap-around, comprehensive unit tests, core/__init__.py re-export
 - [ ] 04-02-PLAN.md — `MoCoV1Module` + `MoCoV2Module` implementation with momentum encoder, FIFO queue, InfoNCELoss queue mode, EMA via BaseSSLModule hook, dispatcher registration, and full test suite
 - [ ] 04-03-PLAN.md — Per-method YAML configs (v1 SGD, v2 SGD), DOC-02 docstrings with shuffled-BN and momentum sensitivity gotchas, end-to-end smoke tests
 

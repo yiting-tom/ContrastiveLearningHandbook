@@ -87,7 +87,7 @@
 
 - [x] **INFRA-02**: `MemoryBank(n_samples, dim)` implemented as `nn.Embedding` with update-by-index. Shared by Instance Discrimination and CMC.
 
-- [ ] **INFRA-03**: `MomentumQueue(queue_size, dim)` FIFO buffer (torch.zeros initialized, with pointer). Shared by MoCo v1 and MoCo v2. Exposes `get_negatives()` and `update(keys)` interface.
+- [x] **INFRA-03**: `MomentumQueue(queue_size, dim)` FIFO buffer (torch.zeros initialized, with pointer). Shared by MoCo v1 and MoCo v2. Exposes `get_negatives()` and `update(keys)` interface.
 
 - [ ] **INFRA-04**: `MultiCropDataset` wrapper that applies `n_large_crops` large augmentations and `n_small_crops` small augmentations to each image. Shared by SwAV and DINO.
 
