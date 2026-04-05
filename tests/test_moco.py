@@ -334,3 +334,146 @@ def test_queue_updated_after_training_step():
     assert new_ptr == expected_ptr, (
         f"Queue pointer should advance by batch_size: expected {expected_ptr}, got {new_ptr}"
     )
+
+
+# ---------------------------------------------------------------------------
+# YAML Smoke Tests (end-to-end from config through training)
+# ---------------------------------------------------------------------------
+
+def test_moco_v1_yaml_smoke(large_imagefolder):
+    """Smoke test: MoCo v1 trains 3 epochs from YAML config without divergence."""
+    import yaml as _yaml
+
+    from methods.moco.module import MoCoV1Module
+    from core.dispatcher import method_dispatcher, register_method, available_methods
+
+    if "moco_v1" not in available_methods():
+        register_method("moco_v1", MoCoV1Module)
+
+    with open("configs/moco_v1_resnet18.yaml") as fh:
+        raw = _yaml.safe_load(fh)
+
+    raw["data_dir"] = str(large_imagefolder)
+    raw["max_epochs"] = 3
+    raw["warmup_epochs"] = 0
+    raw["batch_size"] = 16
+    raw["num_workers"] = 0
+    raw["moco"]["queue_size"] = 64
+
+    cfg = TrainConfig.model_validate(raw)
+    model = method_dispatcher(cfg)
+    dm = SSLDataModule(
+        data_dir=cfg.data_dir,
+        n_views=2,
+        batch_size=16,
+        num_workers=0,
+        size=32,
+        strong=True,
+    )
+    tracker = LossTracker()
+    trainer = L.Trainer(
+        max_epochs=3,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        callbacks=[tracker],
+    )
+    trainer.fit(model, dm)
+
+    assert len(tracker.epoch_losses) == 3, f"Expected 3 epochs, got {len(tracker.epoch_losses)}"
+    for i, loss in enumerate(tracker.epoch_losses):
+        assert loss == loss, f"Epoch {i} loss is NaN"
+        assert abs(loss) < 1e6, f"Epoch {i} loss diverged: {loss}"
+
+
+def test_moco_v2_yaml_smoke(large_imagefolder):
+    """Smoke test: MoCo v2 trains 3 epochs from YAML config without divergence."""
+    import yaml as _yaml
+
+    from methods.moco.module import MoCoV2Module
+    from core.dispatcher import method_dispatcher, register_method, available_methods
+
+    if "moco_v2" not in available_methods():
+        register_method("moco_v2", MoCoV2Module)
+
+    with open("configs/moco_v2_resnet18.yaml") as fh:
+        raw = _yaml.safe_load(fh)
+
+    raw["data_dir"] = str(large_imagefolder)
+    raw["max_epochs"] = 3
+    raw["warmup_epochs"] = 0
+    raw["batch_size"] = 16
+    raw["num_workers"] = 0
+    raw["moco"]["queue_size"] = 64
+
+    cfg = TrainConfig.model_validate(raw)
+    model = method_dispatcher(cfg)
+    dm = SSLDataModule(
+        data_dir=cfg.data_dir,
+        n_views=2,
+        batch_size=16,
+        num_workers=0,
+        size=32,
+        strong=True,
+    )
+    tracker = LossTracker()
+    trainer = L.Trainer(
+        max_epochs=3,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        callbacks=[tracker],
+    )
+    trainer.fit(model, dm)
+
+    assert len(tracker.epoch_losses) == 3, f"Expected 3 epochs, got {len(tracker.epoch_losses)}"
+    for i, loss in enumerate(tracker.epoch_losses):
+        assert loss == loss, f"Epoch {i} loss is NaN"
+        assert abs(loss) < 1e6, f"Epoch {i} loss diverged: {loss}"
+
+
+# ---------------------------------------------------------------------------
+# Docstring Validation Tests (DOC-02 compliance)
+# ---------------------------------------------------------------------------
+
+def test_moco_v1_docstring():
+    """MoCoV1Module docstring meets DOC-02 standard."""
+    from methods.moco.module import MoCoV1Module
+
+    doc = MoCoV1Module.__doc__
+    assert doc is not None, "MoCoV1Module must have a docstring"
+    assert "Paper:" in doc, "Docstring must contain 'Paper:' field"
+    assert "Authors:" in doc, "Docstring must contain 'Authors:' field"
+    assert "Venue:" in doc, "Docstring must contain 'Venue:' field"
+    assert "arXiv:" in doc, "Docstring must contain 'arXiv:' field"
+    assert "Gotcha" in doc, "Docstring must contain 'Gotchas:' section"
+    assert "Reference implementation:" in doc, "Docstring must contain reference URL"
+    assert "CVPR 2020" in doc, "Docstring must contain venue and year"
+    # MoCo v1 specific: shuffled BN documentation
+    assert "shuffled" in doc.lower() or "Shuffled" in doc, (
+        "Docstring must document shuffled BN limitation"
+    )
+    # MoCo v1 specific: m=0.9 vs m=0.999 sensitivity
+    assert "m=0.9" in doc or "0.9" in doc, (
+        "Docstring must document m=0.9 vs m=0.999 sensitivity"
+    )
+
+
+def test_moco_v2_docstring():
+    """MoCoV2Module docstring meets DOC-02 standard."""
+    from methods.moco.module import MoCoV2Module
+
+    doc = MoCoV2Module.__doc__
+    assert doc is not None, "MoCoV2Module must have a docstring"
+    assert "Paper:" in doc, "Docstring must contain 'Paper:' field"
+    assert "Authors:" in doc, "Docstring must contain 'Authors:' field"
+    assert "Venue:" in doc, "Docstring must contain 'Venue:' field"
+    assert "arXiv:" in doc, "Docstring must contain 'arXiv:' field"
+    assert "Gotcha" in doc, "Docstring must contain 'Gotchas:' section"
+    assert "Reference implementation:" in doc, "Docstring must contain reference URL"
+    # MoCo v2 specific: "5-line diff"
+    assert "5-line diff" in doc, (
+        "Docstring must mention '5-line diff from v1'"
+    )
