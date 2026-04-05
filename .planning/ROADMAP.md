@@ -85,8 +85,8 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md — SimCLRv1Module + SimCLRv2Module implementation with dispatcher registration and comprehensive test suite (NT-Xent symmetry, projection head depth, training, dispatcher)
-- [ ] 03-02-PLAN.md — Per-method YAML configs (v1 AdamW, v1 LARS, v2) and augmentation visualization script at tools/visualize_augmentations.py
-- [ ] 03-03-PLAN.md — DOC-02 docstrings for both modules and end-to-end smoke tests from YAML configs
+- [x] 03-02-PLAN.md — Per-method YAML configs (v1 AdamW, v1 LARS, v2) and augmentation visualization script at tools/visualize_augmentations.py
+- [x] 03-03-PLAN.md — DOC-02 docstrings for both modules and end-to-end smoke tests from YAML configs
 
 **UI hint**: no
 
