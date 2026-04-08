@@ -120,3 +120,106 @@ def test_invalid_type_raises(toy_config_dict):
     bad["lr"] = "not_a_float"
     with pytest.raises(ValidationError):
         TrainConfig.model_validate(bad)
+
+
+# ---------------------------------------------------------------------------
+# Test 8: SwAVConfig has correct new defaults (multi-crop + temperature/epsilon)
+# ---------------------------------------------------------------------------
+def test_swav_config_new_defaults():
+    """SwAVConfig has correct defaults: n_large_crops=2, large_size=224, n_small_crops=6,
+    small_size=96, temperature=0.1, epsilon=0.05."""
+    from core.config import SwAVConfig
+
+    cfg = SwAVConfig()
+    assert cfg.n_large_crops == 2
+    assert cfg.large_size == 224
+    assert cfg.n_small_crops == 6
+    assert cfg.small_size == 96
+    assert cfg.temperature == pytest.approx(0.1)
+    assert cfg.epsilon == pytest.approx(0.05)
+
+
+# ---------------------------------------------------------------------------
+# Test 9: SwAVConfig rejects unknown keys (extra=forbid)
+# ---------------------------------------------------------------------------
+def test_swav_config_extra_forbid():
+    """SwAVConfig raises ValidationError on unknown keys (extra='forbid' from _StrictBase)."""
+    from core.config import SwAVConfig
+
+    with pytest.raises(ValidationError):
+        SwAVConfig.model_validate({"n_prototypes": 3000, "unknown_key": 99})
+
+
+# ---------------------------------------------------------------------------
+# Test 10: TrainConfig with method="swav" and swav sub-config validates successfully
+# ---------------------------------------------------------------------------
+def test_trainconfig_with_swav():
+    """TrainConfig with method='swav' and a SwAVConfig sub-config validates successfully."""
+    from core.config import TrainConfig
+
+    cfg = TrainConfig.model_validate({
+        "method": "swav",
+        "swav": {
+            "n_prototypes": 3000,
+            "n_large_crops": 2,
+            "large_size": 224,
+            "n_small_crops": 6,
+            "small_size": 96,
+            "temperature": 0.1,
+            "epsilon": 0.05,
+        }
+    })
+    assert cfg.method == "swav"
+    assert cfg.swav is not None
+    assert cfg.swav.n_large_crops == 2
+    assert cfg.swav.small_size == 96
+
+
+# ---------------------------------------------------------------------------
+# Test 11: InfoMinConfig has correct defaults
+# ---------------------------------------------------------------------------
+def test_infomin_config_defaults():
+    """InfoMinConfig has defaults: color_strength=1.5, grayscale_prob=0.4, use_blur=False."""
+    from core.config import InfoMinConfig
+
+    cfg = InfoMinConfig()
+    assert cfg.color_strength == pytest.approx(1.5)
+    assert cfg.grayscale_prob == pytest.approx(0.4)
+    assert cfg.use_blur is False
+
+
+# ---------------------------------------------------------------------------
+# Test 12: TrainConfig with method="infomin" and infomin sub-config validates successfully
+# ---------------------------------------------------------------------------
+def test_trainconfig_with_infomin():
+    """TrainConfig with method='infomin' and an InfoMinConfig sub-config validates."""
+    from core.config import TrainConfig
+
+    cfg = TrainConfig.model_validate({
+        "method": "infomin",
+        "infomin": {
+            "color_strength": 1.5,
+            "grayscale_prob": 0.4,
+            "use_blur": False,
+        }
+    })
+    assert cfg.method == "infomin"
+    assert cfg.infomin is not None
+    assert cfg.infomin.color_strength == pytest.approx(1.5)
+
+
+# ---------------------------------------------------------------------------
+# Test 13: YAML round-trip for SwAVConfig crop fields
+# ---------------------------------------------------------------------------
+def test_swav_yaml_round_trip():
+    """SwAVConfig fields survive yaml.safe_dump -> yaml.safe_load -> model_validate."""
+    from core.config import SwAVConfig
+
+    original = SwAVConfig(n_large_crops=2, large_size=224, n_small_crops=6, small_size=96)
+    dumped = yaml.safe_dump(original.model_dump())
+    loaded_dict = yaml.safe_load(dumped)
+    restored = SwAVConfig.model_validate(loaded_dict)
+    assert restored.n_large_crops == original.n_large_crops
+    assert restored.large_size == original.large_size
+    assert restored.n_small_crops == original.n_small_crops
+    assert restored.small_size == original.small_size
