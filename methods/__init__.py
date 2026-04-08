@@ -9,3 +9,4 @@ import methods.moco                     # noqa: F401
 import methods.infomin                  # noqa: F401
 import methods.swav                     # noqa: F401
 import methods.byol                     # noqa: F401
+import methods.simsiam                  # noqa: F401
