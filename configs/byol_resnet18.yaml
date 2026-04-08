@@ -1,0 +1,31 @@
+# BYOL (Grill et al., NeurIPS 2020) -- ResNet-18 tutorial config
+# Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning
+#
+# No-negative SSL via online/target bootstrap. The predictor asymmetry
+# (online branch only) combined with EMA prevents collapse.
+#
+# Original paper uses ResNet-50 with batch_size=4096 and LARS.
+# This tutorial config uses ResNet-18 with batch_size=256 and AdamW.
+# Performance will be lower but the method dynamics are preserved.
+#
+# Key: EMA momentum schedule (0.996->1.0) matters more than the base value.
+# Constant momentum (not scheduled) leads to ~1% worse top-1.
+
+method: byol
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 3e-4
+weight_decay: 1e-6
+optimizer: adamw
+scheduler: warmup_cosine
+n_views: 2
+data_dir: data
+num_workers: 4
+
+byol:
+  base_momentum: 0.996
+  end_momentum: 1.0

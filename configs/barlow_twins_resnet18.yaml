@@ -1,0 +1,33 @@
+# Barlow Twins (Zbontar et al., ICML 2021) -- ResNet-18 tutorial config
+# Barlow Twins: Self-Supervised Learning via Redundancy Reduction
+#
+# No-negative SSL via cross-correlation matrix redundancy reduction.
+# The 8192-dim projector is critical -- low-dim projectors (128, 256)
+# produce significantly worse representations.
+#
+# Original paper uses ResNet-50 with batch_size=2048 and LARS.
+# This tutorial config uses ResNet-18 with batch_size=256.
+# With small batch sizes, the cross-correlation statistics are noisier
+# but the method still learns useful representations.
+#
+# lambda_coeff=5e-3 balances invariance (diagonal) vs redundancy reduction
+# (off-diagonal). Higher lambda -> more redundancy reduction, less invariance.
+
+method: barlow_twins
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 3e-4
+weight_decay: 1e-6
+optimizer: adamw
+scheduler: warmup_cosine
+n_views: 2
+data_dir: data
+num_workers: 4
+
+barlow_twins:
+  lambda_coeff: 5e-3
+  projection_dim: 8192

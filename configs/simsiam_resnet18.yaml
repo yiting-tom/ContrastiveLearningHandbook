@@ -1,0 +1,30 @@
+# SimSiam (Chen & He, CVPR 2021) -- ResNet-18 tutorial config
+# Exploring Simple Siamese Representation Learning
+#
+# No-negative SSL with shared encoder and stop-gradient.
+# The .detach() on projection outputs is load-bearing -- removing it
+# causes loss to collapse to -1.0 within 2 epochs.
+#
+# Original paper uses ResNet-50 with batch_size=512 and SGD.
+# This tutorial config uses ResNet-18 -- dynamics preserved.
+#
+# Note: SimSiam is sensitive to learning rate. Too high causes collapse.
+# The paper uses lr = 0.05 * batch_size / 256 (linear scaling rule).
+
+method: simsiam
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 0.05
+weight_decay: 1e-4
+optimizer: sgd
+scheduler: warmup_cosine
+n_views: 2
+data_dir: data
+num_workers: 4
+
+simsiam:
+  predictor_hidden_dim: 512
