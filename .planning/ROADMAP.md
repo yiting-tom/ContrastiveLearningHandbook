@@ -128,13 +128,13 @@ Plans:
 **Plans**: 7 plans
 
 Plans:
-- [ ] 05-01: Implement `MultiCropDataset` wrapper — accepts `(dataset, n_large_crops, large_size, n_small_crops, small_size)`; applies separate `ContrastiveAugmentation` instances for large and small crops; yields a list of `n_large + n_small` tensors per sample; register in `SSLDataModule` when `n_views > 2`
-- [ ] 05-02: Implement Sinkhorn-Knopp optimal transport — `sinkhorn_knopp(scores, n_iters=3, epsilon=0.05)` returning doubly-stochastic code matrix `Q`; write unit test asserting row-sum uniformity and column-sum uniformity after convergence
-- [ ] 05-03: Implement prototype layer — `nn.Linear(feat_dim, n_prototypes, bias=False)` with L2-normalization hook applied after every optimizer step via `on_after_backward` + manual renormalization; `freeze_prototypes_epochs` config parameter that zeroes prototype gradients before the threshold epoch
-- [ ] 05-04: Implement swapped-prediction loss — given codes `(q1, q2)` and features `(z1, z2)`, compute `cross_entropy(z1 @ C.T / tau, q2) + cross_entropy(z2 @ C.T / tau, q1)` averaged over crops; handle multi-crop by iterating over all small crop views
-- [ ] 05-05: Implement `SwAVModule(BaseSSLModule)` — `MultiCropDataset` integration, prototype layer, Sinkhorn-Knopp codes, swapped-prediction loss, prototype freeze logic; add `learnable_params` override that includes prototype parameters; register as `swav`
-- [ ] 05-06: Implement `InfoMinModule` as a thin wrapper around `SimCLRv1Module` or `MoCoV2Module` that substitutes a "minimal-MI" augmentation policy (aggressive color jitter + random grayscale + no blur); include a comparison script that visualizes standard SimCLR augmentation vs. InfoMin augmentation side-by-side; document the full semi-supervised view-learning variant as v2 scope
-- [ ] 05-07: Write per-method YAML configs for SwAV (2-large + 6-small crop variant) and InfoMin; add DOC-02 docstrings; smoke-test both for 3 epochs; document memory usage warning for 8-crop configuration in config YAML comments
+- [x] 05-01: Implement `MultiCropDataset` wrapper — accepts `(dataset, n_large_crops, large_size, n_small_crops, small_size)`; applies separate `ContrastiveAugmentation` instances for large and small crops; yields a list of `n_large + n_small` tensors per sample; register in `SSLDataModule` when `n_views > 2`
+- [x] 05-02: Implement Sinkhorn-Knopp optimal transport — `sinkhorn_knopp(scores, n_iters=3, epsilon=0.05)` returning doubly-stochastic code matrix `Q`; write unit test asserting row-sum uniformity and column-sum uniformity after convergence
+- [x] 05-03: Implement prototype layer — `nn.Linear(feat_dim, n_prototypes, bias=False)` with L2-normalization hook applied after every optimizer step via `on_after_backward` + manual renormalization; `freeze_prototypes_epochs` config parameter that zeroes prototype gradients before the threshold epoch
+- [x] 05-04: Implement swapped-prediction loss — given codes `(q1, q2)` and features `(z1, z2)`, compute `cross_entropy(z1 @ C.T / tau, q2) + cross_entropy(z2 @ C.T / tau, q1)` averaged over crops; handle multi-crop by iterating over all small crop views
+- [x] 05-05: Implement `SwAVModule(BaseSSLModule)` — `MultiCropDataset` integration, prototype layer, Sinkhorn-Knopp codes, swapped-prediction loss, prototype freeze logic; add `learnable_params` override that includes prototype parameters; register as `swav`
+- [x] 05-06: Implement `InfoMinModule` as a thin wrapper around `SimCLRv1Module` or `MoCoV2Module` that substitutes a "minimal-MI" augmentation policy (aggressive color jitter + random grayscale + no blur); include a comparison script that visualizes standard SimCLR augmentation vs. InfoMin augmentation side-by-side; document the full semi-supervised view-learning variant as v2 scope
+- [x] 05-07: Write per-method YAML configs for SwAV (2-large + 6-small crop variant) and InfoMin; add DOC-02 docstrings; smoke-test both for 3 epochs; document memory usage warning for 8-crop configuration in config YAML comments
 
 **UI hint**: no
 
