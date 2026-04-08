@@ -52,6 +52,13 @@ class BarlowTwinsModule(BaseSSLModule):
 
     No predictor, no EMA, no queue, no negatives.
 
+    Collapse Monitoring:
+        - ``train/corr_diag_mean``: mean of the diagonal of the cross-correlation
+          matrix C. Computed as ``torch.diagonal(C).mean()`` under
+          ``torch.no_grad()``. Collapse is indicated when this value drops below
+          0.5 — the two views' representations are no longer correlated. Healthy
+          training: > 0.8. Poor invariance: < 0.5.
+
     Args:
         cfg: TrainConfig with cfg.barlow_twins populated.
     """

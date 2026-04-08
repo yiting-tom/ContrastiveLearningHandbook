@@ -49,6 +49,13 @@ class SimSiamModule(BaseSSLModule):
     Loss: -(cosim(p1, z2.detach()) + cosim(p2, z1.detach())) / 2
     The .detach() on z is the stop-gradient that prevents collapse.
 
+    Collapse Monitoring:
+        - ``train/embedding_std``: std of projector embeddings across the batch
+          feature dimension. Computed as ``z1.std(dim=0).mean()`` under
+          ``torch.no_grad()``. Collapse is indicated when this value approaches
+          0.0 — all embeddings have converged to the same point in representation
+          space. Healthy training: > 0.1. Collapse: < 0.01.
+
     Args:
         cfg: TrainConfig with cfg.simsiam populated.
     """
