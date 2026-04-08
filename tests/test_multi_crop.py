@@ -22,6 +22,7 @@ def make_imagefolder_dataset(tmp_path, n_classes=2, n_images=5, img_size=64):
             img = Image.fromarray(arr)
             img.save(cls_dir / f"img_{img_idx:02d}.jpg")
 
+
     # No transform — MultiCropDataset applies its own augmentation
     return ImageFolder(str(tmp_path))
 

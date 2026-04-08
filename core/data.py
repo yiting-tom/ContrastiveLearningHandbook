@@ -4,6 +4,8 @@ Provides:
     - ContrastiveAugmentation: strong/weak single-view augmentation callable.
     - MultiViewTransform: wraps an augmentation to produce n_views copies.
     - ssl_collate_fn: custom collate for multi-view batches.
+    - MultiCropDataset: dataset wrapper for SwAV/DINO-style multi-crop (variable sizes).
+    - ssl_collate_multi_crop: collate for multi-crop batches with mixed spatial dims.
     - SSLDataModule: Lightning DataModule wrapping ImageFolder with multi-view support.
 """
 
@@ -130,11 +132,84 @@ def ssl_collate_with_index(batch):
     )
 
 
+class MultiCropDataset(torch.utils.data.Dataset):
+    """Dataset wrapper for multi-crop augmentation (SwAV/DINO style).
+
+    Applies two sets of augmentations to each image: n_large_crops at large_size
+    and n_small_crops at small_size, returning a flat list of crops plus the label.
+
+    The base dataset must return (PIL_Image, label) -- it must NOT apply its own
+    transform, as MultiCropDataset applies ContrastiveAugmentation internally.
+
+    This is a reusable INFRA-04 component shared by SwAV (Phase 5) and DINO (Phase 7).
+
+    Args:
+        dataset: Base dataset returning (PIL_Image, label) tuples.
+        n_large_crops: Number of large-resolution crops to produce.
+        large_size: Spatial size for large crops (e.g. 224).
+        n_small_crops: Number of small-resolution crops to produce.
+        small_size: Spatial size for small crops (e.g. 96).
+        strong: Use strong (SimCLR-style) augmentation if True (default).
+
+    Returns:
+        (crops, label) where crops is a list of n_large_crops + n_small_crops tensors.
+    """
+
+    def __init__(
+        self,
+        dataset,
+        n_large_crops: int,
+        large_size: int,
+        n_small_crops: int,
+        small_size: int,
+        strong: bool = True,
+    ):
+        self.dataset = dataset
+        self.n_large_crops = n_large_crops
+        self.n_small_crops = n_small_crops
+        self.large_aug = ContrastiveAugmentation(size=large_size, strong=strong)
+        self.small_aug = ContrastiveAugmentation(size=small_size, strong=strong)
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        img, label = self.dataset[idx]
+        crops = []
+        for _ in range(self.n_large_crops):
+            crops.append(self.large_aug(img))
+        for _ in range(self.n_small_crops):
+            crops.append(self.small_aug(img))
+        return crops, label
+
+
+def ssl_collate_multi_crop(batch):
+    """Collate function for multi-crop SSL batches (SwAV/DINO style).
+
+    Unlike ssl_collate_fn, this returns a LIST of tensors (not a single stacked
+    tensor) because large and small crops have different spatial dimensions and
+    cannot be stacked together.
+
+    Input: list of (crops_list, label) tuples where each crops_list has n_crops tensors.
+    Output: (crops_list, labels_tensor)
+        crops_list: list of n_crops tensors, each shape [B, C, H, W]
+        labels_tensor shape: [B]
+    """
+    all_crops, labels = zip(*batch)
+    n_crops = len(all_crops[0])
+    crops_list = [torch.stack([sample[i] for sample in all_crops]) for i in range(n_crops)]
+    return crops_list, torch.tensor(labels, dtype=torch.long)
+
+
 class SSLDataModule(L.LightningDataModule):
     """Lightning DataModule for SSL pretraining.
 
     Wraps ImageFolder with multi-view augmentation.
     Each batch yields (views, labels) where views shape is [n_views, B, C, H, W].
+
+    When a pre-wrapped MultiCropDataset is passed via the dataset parameter,
+    the DataModule skips ImageFolder creation and uses ssl_collate_multi_crop
+    automatically.
 
     Args:
         data_dir: Path to ImageFolder-style directory. If a 'train/' subdirectory
@@ -144,6 +219,8 @@ class SSLDataModule(L.LightningDataModule):
         num_workers: DataLoader workers.
         size: Crop size for augmentations.
         strong: Whether to use strong (SimCLR-style) or weak (era-1) augmentation.
+        dataset: Optional pre-wrapped dataset (e.g. MultiCropDataset). When provided,
+            ImageFolder creation and transform wrapping are skipped.
     """
 
     def __init__(
@@ -154,6 +231,7 @@ class SSLDataModule(L.LightningDataModule):
         num_workers: int = 4,
         size: int = 224,
         strong: bool = True,
+        dataset: torch.utils.data.Dataset | None = None,
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -162,16 +240,21 @@ class SSLDataModule(L.LightningDataModule):
         self.num_workers = num_workers
         self.size = size
         self.strong = strong
+        self.dataset = dataset
 
     def setup(self, stage=None):
-        augmentation = ContrastiveAugmentation(size=self.size, strong=self.strong)
-        transform = MultiViewTransform(augmentation, n_views=self.n_views)
+        if self.dataset is not None:
+            # Use the pre-wrapped dataset as-is (e.g. MultiCropDataset)
+            self.train_dataset = self.dataset
+        else:
+            augmentation = ContrastiveAugmentation(size=self.size, strong=self.strong)
+            transform = MultiViewTransform(augmentation, n_views=self.n_views)
 
-        # Try train/ subdirectory first, fall back to data_dir itself
-        train_dir = os.path.join(self.data_dir, "train")
-        if not os.path.isdir(train_dir):
-            train_dir = self.data_dir
-        self.train_dataset = ImageFolder(train_dir, transform=transform)
+            # Try train/ subdirectory first, fall back to data_dir itself
+            train_dir = os.path.join(self.data_dir, "train")
+            if not os.path.isdir(train_dir):
+                train_dir = self.data_dir
+            self.train_dataset = ImageFolder(train_dir, transform=transform)
 
         val_dir = os.path.join(self.data_dir, "val")
         if os.path.isdir(val_dir):
@@ -188,12 +271,16 @@ class SSLDataModule(L.LightningDataModule):
             self.val_dataset = None
 
     def train_dataloader(self):
+        if isinstance(self.train_dataset, MultiCropDataset):
+            collate = ssl_collate_multi_crop
+        else:
+            collate = ssl_collate_fn
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
             num_workers=self.num_workers,
-            collate_fn=ssl_collate_fn,
+            collate_fn=collate,
             drop_last=True,
             pin_memory=True,
         )
