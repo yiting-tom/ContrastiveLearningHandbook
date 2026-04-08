@@ -218,8 +218,12 @@ def test_infomin_grayscale_p04():
 
 def test_infomin_dispatcher_registration():
     """'infomin' is registered in the method dispatcher."""
-    import methods.infomin  # trigger registration
-    from core.dispatcher import available_methods
+    from methods.infomin.module import InfoMinModule
+    from core.dispatcher import available_methods, register_method
+
+    if "infomin" not in available_methods():
+        register_method("infomin", InfoMinModule)
+
     assert "infomin" in available_methods(), (
         "'infomin' must be registered in the method dispatcher"
     )
@@ -227,9 +231,11 @@ def test_infomin_dispatcher_registration():
 
 def test_infomin_dispatcher_returns_correct_class():
     """Dispatcher returns InfoMinModule for method='infomin'."""
-    import methods.infomin  # trigger registration
     from methods.infomin.module import InfoMinModule
-    from core.dispatcher import method_dispatcher
+    from core.dispatcher import method_dispatcher, available_methods, register_method
+
+    if "infomin" not in available_methods():
+        register_method("infomin", InfoMinModule)
 
     cfg = _make_cfg(method="infomin")
     model = method_dispatcher(cfg)
@@ -245,8 +251,10 @@ def test_infomin_dispatcher_returns_correct_class():
 
 def test_infomin_trains_5_epochs_no_nan(large_imagefolder):
     """InfoMinModule trains 5 epochs using build_augmentation() production path without NaN."""
-    import methods.infomin  # trigger registration
     from methods.infomin.module import InfoMinModule
+    from core.dispatcher import available_methods, register_method
+    if "infomin" not in available_methods():
+        register_method("infomin", InfoMinModule)
     from core.data import MultiViewTransform, SSLDataModule
     from torchvision.datasets import ImageFolder
 
@@ -258,6 +266,7 @@ def test_infomin_trains_5_epochs_no_nan(large_imagefolder):
         batch_size=8,
         max_epochs=5,
         n_views=2,
+        data_dir=str(large_imagefolder),
     )
 
     # Production data path: use InfoMinModule.build_augmentation() directly

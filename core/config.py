@@ -107,6 +107,18 @@ class InvariantSpreadConfig(_StrictBase):
     projection_dim: int = 128
 
 
+class InfoMinConfig(_StrictBase):
+    """InfoMin (Tian et al., NeurIPS 2020) method-specific hyper-parameters.
+
+    Controls augmentation policy: aggressive color jitter, higher grayscale
+    probability, and no Gaussian blur (the InfoMin key difference vs SimCLR).
+    """
+
+    color_strength: float = 1.5
+    grayscale_prob: float = 0.4
+    use_blur: bool = False
+
+
 # ---------------------------------------------------------------------------
 # Eval sub-configs
 # ---------------------------------------------------------------------------
@@ -214,6 +226,7 @@ class TrainConfig(_StrictBase):
     supcon: Optional[SupConConfig] = None
     instance_discrimination: Optional[InstanceDiscriminationConfig] = None
     invariant_spread: Optional[InvariantSpreadConfig] = None
+    infomin: Optional[InfoMinConfig] = None
 
     # Evaluation
     eval: Optional[EvalConfig] = None

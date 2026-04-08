@@ -25,6 +25,7 @@ import torch.nn as nn
 from core.backbone import build_backbone
 from core.base import BaseSSLModule
 from core.config import SimCLRConfig, TrainConfig
+from core.data import ContrastiveAugmentation
 from core.losses import InfoNCELoss
 from core.projection import ProjectionHead
 
@@ -81,6 +82,21 @@ class SimCLRv1Module(BaseSSLModule):
             simclr_cfg.projection_dim,
             num_layers=2,
         )
+
+    @classmethod
+    def build_augmentation(cls, size: int = 224) -> ContrastiveAugmentation:
+        """Build the default augmentation for this method.
+
+        Subclasses override to customize augmentation policy (e.g., InfoMin).
+        Called by setup() to construct the data pipeline.
+
+        Args:
+            size: Crop size for augmentation.
+
+        Returns:
+            Augmentation callable compatible with MultiViewTransform.
+        """
+        return ContrastiveAugmentation(size=size, strong=True)
 
     def training_step(self, batch, batch_idx):
         """Forward pass: encode both views, compute symmetric NT-Xent loss.
