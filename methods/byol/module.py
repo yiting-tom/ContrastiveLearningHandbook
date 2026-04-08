@@ -140,12 +140,15 @@ class BYOLModule(BaseSSLModule):
             t1 = F.normalize(self.projector_ema(self.backbone_ema(v1)), dim=1)
             t2 = F.normalize(self.projector_ema(self.backbone_ema(v2)), dim=1)
 
-        # Symmetric BYOL loss: 2 - 2 * cosine_similarity
-        # .detach() is defensive: target params have requires_grad=False, so
-        # no_grad already prevents gradients, but detach makes intent explicit.
+        # Stop-gradient: target outputs are detached — gradients flow only through the
+        # online predictor, not the target branch. This asymmetry (predictor on online
+        # branch only) is the mechanism that prevents representational collapse without
+        # any negative pairs. Removing .detach() here (or the torch.no_grad() context
+        # above) causes immediate collapse because the optimization can trivially satisfy
+        # the loss by making both branches output the same constant vector.
         loss = (
-            (2 - 2 * F.cosine_similarity(p1, t2.detach(), dim=1)).mean()
-            + (2 - 2 * F.cosine_similarity(p2, t1.detach(), dim=1)).mean()
+            (2 - 2 * F.cosine_similarity(p1, t2.detach(), dim=1)).mean()  # stop-gradient
+            + (2 - 2 * F.cosine_similarity(p2, t1.detach(), dim=1)).mean()  # stop-gradient
         ) / 2
 
         # Collapse monitoring — log embedding_std from online projector output
