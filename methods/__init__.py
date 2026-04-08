@@ -8,3 +8,4 @@ import methods.simclr                   # noqa: F401
 import methods.moco                     # noqa: F401
 import methods.infomin                  # noqa: F401
 import methods.swav                     # noqa: F401
+import methods.barlow_twins             # noqa: F401
