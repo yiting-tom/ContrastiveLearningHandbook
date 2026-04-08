@@ -51,7 +51,14 @@ def sinkhorn_knopp(
 
     From the official facebookresearch/swav implementation (single-GPU version).
     """
-    Q = torch.exp(scores / epsilon).t()  # [K, B]
+    # Subtract per-column max for numerical stability (log-sum-exp trick).
+    # Prevents exp overflow when scores/epsilon are large (e.g. scores > 4.4
+    # with epsilon=0.05 overflows float32). Subtracting max does not change the
+    # doubly-stochastic result because the subsequent row/column normalization
+    # is scale-invariant.
+    scaled = scores / epsilon  # [B, K]
+    scaled = scaled - scaled.max(dim=0, keepdim=True).values  # per-prototype max subtraction
+    Q = torch.exp(scaled).t()  # [K, B]
     B = Q.shape[1]
     K = Q.shape[0]
 
