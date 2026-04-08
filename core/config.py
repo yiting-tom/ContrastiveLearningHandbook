@@ -61,6 +61,26 @@ class SwAVConfig(_StrictBase):
     n_prototypes: int = 3000
     freeze_prototypes_epochs: int = 1
     sinkhorn_iterations: int = 3
+    temperature: float = 0.1
+    epsilon: float = 0.05
+    n_large_crops: int = 2
+    large_size: int = 224
+    n_small_crops: int = 6
+    small_size: int = 96
+
+
+class InfoMinConfig(_StrictBase):
+    """InfoMin method-specific hyper-parameters.
+
+    Controls the aggressive augmentation policy that minimizes mutual
+    information between views while retaining task-relevant information.
+    """
+
+    temperature: float = 0.5
+    projection_dim: int = 128
+    color_strength: float = 1.5
+    grayscale_prob: float = 0.4
+    use_blur: bool = False
 
 
 class BarlowTwinsConfig(_StrictBase):
@@ -220,6 +240,7 @@ class TrainConfig(_StrictBase):
     moco: Optional[MoCoConfig] = None
     byol: Optional[BYOLConfig] = None
     swav: Optional[SwAVConfig] = None
+    infomin: Optional[InfoMinConfig] = None
     barlow_twins: Optional[BarlowTwinsConfig] = None
     simsiam: Optional[SimSiamConfig] = None
     dino: Optional[DINOConfig] = None
