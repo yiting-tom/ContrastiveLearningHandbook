@@ -1,0 +1,32 @@
+# InfoMin (Tian et al., NeurIPS 2020) -- ResNet-18 tutorial config
+# What Makes for Good Views for Contrastive Learning
+#
+# Augmentation-policy demonstration on top of SimCLR backbone.
+# Key changes from SimCLR: stronger color jitter (s=1.5 vs 1.0),
+# higher grayscale probability (0.4 vs 0.2), NO Gaussian blur.
+#
+# The InfoMin principle: views should share task-relevant information
+# but minimize mutual information beyond that. Removing blur and
+# increasing color distortion strips low-level texture correlations.
+#
+# Full semi-supervised view-learning variant deferred to v2 scope.
+
+method: infomin
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 0.3
+weight_decay: 1e-6
+optimizer: lars
+scheduler: warmup_cosine
+n_views: 2
+data_dir: data
+num_workers: 4
+
+infomin:
+  color_strength: 1.5
+  grayscale_prob: 0.4
+  use_blur: false

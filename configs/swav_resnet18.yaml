@@ -1,0 +1,38 @@
+# SwAV (Caron et al., NeurIPS 2020) -- ResNet-18 tutorial config
+# Unsupervised Learning of Visual Features by Contrasting Cluster Assignments
+#
+# Online clustering via Sinkhorn-Knopp optimal transport.
+# Multi-crop: 2 large (224x224) + 6 small (96x96) = 8 crops per image.
+#
+# Memory usage with 8 crops is ~4x SimCLR -- reduce batch_size accordingly.
+# With ResNet-18 and 8 crops, batch_size=64 is a safe starting point.
+# For ResNet-50, reduce to batch_size=32 or use gradient accumulation.
+#
+# Prototypes are frozen during the first epoch (freeze_prototypes_epochs=1)
+# to allow the backbone to warm up before cluster assignments stabilize.
+
+method: swav
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 64
+lr: 0.3
+weight_decay: 1e-6
+optimizer: lars
+scheduler: warmup_cosine
+n_views: 8
+data_dir: data
+num_workers: 4
+
+swav:
+  n_prototypes: 3000
+  freeze_prototypes_epochs: 1
+  sinkhorn_iterations: 3
+  temperature: 0.1
+  epsilon: 0.05
+  n_large_crops: 2
+  large_size: 224
+  n_small_crops: 6
+  small_size: 96

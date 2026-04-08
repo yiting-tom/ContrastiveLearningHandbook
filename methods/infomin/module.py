@@ -5,7 +5,30 @@ share task-relevant information but minimize mutual information beyond that.
 Subclasses SimCLRv1Module -- the backbone, projection head, and NT-Xent loss
 are inherited unchanged. Only the augmentation policy differs.
 
-[Full DOC-02 docstring added in Plan 07]
+Paper: "What Makes for Good Views for Contrastive Learning?"
+Authors: Yonglong Tian, Chen Sun, Ben Poole, Dilip Krishnan, Cordelia Schmid, Phillip Isola
+Venue: NeurIPS 2020
+arXiv: https://arxiv.org/abs/2005.10243
+
+Algorithm:
+1. Use SimCLR backbone and NT-Xent loss unchanged.
+2. Replace augmentation with aggressive "minimal MI" policy:
+   - Color jitter s=1.5 (vs SimCLR's s=1.0)
+   - Random grayscale p=0.4 (vs SimCLR's p=0.2)
+   - NO Gaussian blur (removed entirely)
+3. The InfoMin principle: views should share task-relevant information
+   but minimize mutual information beyond that. More aggressive
+   augmentation removes spurious correlations (texture, color bias).
+
+Gotchas:
+- This implementation is the augmentation-policy interpretation of InfoMin,
+  not the full semi-supervised view-learning framework (deferred to v2).
+- The augmentation override must be applied at data setup time, not just
+  at module construction. Use build_augmentation() to get the transform.
+- InfoMin augmentation may need batch_size tuning compared to SimCLR
+  because harder augmentations can slow convergence.
+
+Reference implementation: https://github.com/HobbitLong/PyContrast
 """
 from __future__ import annotations
 
