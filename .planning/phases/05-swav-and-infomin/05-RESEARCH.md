@@ -487,21 +487,16 @@ def test_sinkhorn_doubly_stochastic():
 | A2 | InfoMin color jitter s=1.5 and grayscale p=0.4 produce meaningfully different augmentations from SimCLR defaults | Code Examples | Low -- CONTEXT.md says these are starting points, fine-tune within InfoMin spirit |
 | A3 | Sinkhorn-Knopp with 3 iterations and epsilon=0.05 converges sufficiently on small batch sizes (16-32) used in tests | Pitfall 1 | Medium -- may need more iterations or smaller epsilon for very small batches; test should use 10 iterations for strict convergence check |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **How should `build_augmentation()` be wired into the training pipeline?**
-   - What we know: D-11 says InfoMin overrides `build_augmentation()` on `SimCLRv1Module`. But augmentation is currently external (SSLDataModule constructs it).
-   - What's unclear: Whether to add `build_augmentation()` to `SimCLRv1Module` as a new method, or have the module construct its own augmentation and pass it to SSLDataModule.
-   - Recommendation: Add a `build_augmentation()` method to `SimCLRv1Module` that returns a `ContrastiveAugmentation` instance. `InfoMinModule` overrides it. The training script or module's `setup()` uses this to construct the data module. This is a small addition that doesn't break existing code.
+   - **RESOLVED:** Add a `build_augmentation()` classmethod to `SimCLRv1Module` that returns a default `ContrastiveAugmentation(size, strong=True)` instance. `InfoMinModule` overrides this classmethod to return an aggressive augmentation (s=1.5, grayscale p=0.4, no blur). The module's `setup()` method calls `self.build_augmentation()` to get the transform and passes it to `SSLDataModule` via a `MultiViewTransform` wrapper. This wires the augmentation policy into the production data pipeline so that `method: infomin` in YAML produces InfoMin-augmented training data automatically. Per D-11 and D-12, this is the production path (not demo-only).
 
 2. **Should `MultiCropDataset` emit labels?**
-   - What we know: CONTEXT.md lists this as Claude's discretion. The official SwAV implementation supports `return_index` but always returns labels.
-   - What's unclear: Whether eval compatibility requires labels.
-   - Recommendation: Yes, emit `(crops, label)` tuples for consistency with all other dataset wrappers in the codebase and eval compatibility. The collate function already handles this.
+   - **RESOLVED:** Yes, emit `(crops, label)` tuples for consistency with all other dataset wrappers in the codebase and eval compatibility. The collate function handles this. (Claude's discretion per CONTEXT.md.)
 
 3. **Collate function: list of tensors vs. dict?**
-   - What we know: CONTEXT.md lists this as Claude's discretion.
-   - Recommendation: Use a **list of tensors** (not dict). This matches the official SwAV implementation pattern and is simpler. First `n_large_crops` entries are large, rest are small.
+   - **RESOLVED:** Use a **list of tensors** (not dict). This matches the official SwAV implementation pattern and is simpler. First `n_large_crops` entries are large, rest are small. (Claude's discretion per CONTEXT.md.)
 
 ## Validation Architecture
 
