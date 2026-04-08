@@ -306,3 +306,72 @@ def test_infomin_trains_5_epochs_no_nan(large_imagefolder):
     for i, loss in enumerate(tracker.epoch_losses):
         assert loss == loss, f"Epoch {i} loss is NaN"
         assert abs(loss) < 1e6, f"Epoch {i} loss diverged: {loss}"
+
+
+# ---------------------------------------------------------------------------
+# Smoke tests -- YAML config validation and 3-epoch training (Plan 07)
+# ---------------------------------------------------------------------------
+
+def test_infomin_yaml_config_validates():
+    """YAML config loads via load_config() and has correct InfoMin fields."""
+    from core.config import load_config
+    cfg = load_config("configs/infomin_resnet18.yaml")
+    assert cfg.method == "infomin", f"Expected method='infomin', got '{cfg.method}'"
+    assert cfg.infomin.color_strength == 1.5, (
+        f"Expected color_strength=1.5, got {cfg.infomin.color_strength}"
+    )
+    assert cfg.infomin.use_blur is False, (
+        f"Expected use_blur=False, got {cfg.infomin.use_blur}"
+    )
+
+
+def test_infomin_smoke_3_epochs(large_imagefolder):
+    """InfoMinModule trains 3 epochs from YAML-derived config; no NaN loss."""
+    L.seed_everything(42)
+
+    import methods.infomin  # noqa: F401 -- trigger registration
+    from core.data import MultiViewTransform, ssl_collate_fn
+    from methods.infomin.module import InfoMinModule
+    from torch.utils.data import DataLoader
+    from torchvision.datasets import ImageFolder
+
+    cfg = _make_cfg(
+        method="infomin",
+        lr=0.01,
+        batch_size=8,
+        max_epochs=3,
+        n_views=2,
+        data_dir=str(large_imagefolder),
+    )
+
+    aug = InfoMinModule.build_augmentation(size=32)
+    transform = MultiViewTransform(aug, n_views=2)
+    dataset = ImageFolder(str(large_imagefolder), transform=transform)
+
+    train_loader = DataLoader(
+        dataset,
+        batch_size=8,
+        shuffle=True,
+        num_workers=0,
+        collate_fn=ssl_collate_fn,
+        drop_last=True,
+    )
+
+    model = InfoMinModule(cfg)
+    tracker = LossTracker()
+    trainer = L.Trainer(
+        max_epochs=3,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        callbacks=[tracker],
+    )
+    trainer.fit(model, train_dataloaders=train_loader)
+
+    assert len(tracker.epoch_losses) == 3, (
+        f"Expected 3 epochs, got {len(tracker.epoch_losses)}"
+    )
+    for i, loss in enumerate(tracker.epoch_losses):
+        assert loss == loss, f"Epoch {i} loss is NaN"
+        assert abs(loss) < 1e6, f"Epoch {i} loss diverged: {loss}"

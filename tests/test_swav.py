@@ -425,3 +425,92 @@ def test_swav_prototype_gradients_frozen_during_freeze_epoch():
     assert torch.all(grad == 0), (
         "Prototype gradients should be zeroed during freeze epochs"
     )
+
+
+# ---------------------------------------------------------------------------
+# Smoke tests -- YAML config validation and 3-epoch training (Plan 07)
+# ---------------------------------------------------------------------------
+
+def test_swav_yaml_config_validates():
+    """YAML config loads via load_config() and has correct SwAV fields."""
+    from core.config import load_config
+    cfg = load_config("configs/swav_resnet18.yaml")
+    assert cfg.method == "swav", f"Expected method='swav', got '{cfg.method}'"
+    assert cfg.swav.n_large_crops == 2, (
+        f"Expected n_large_crops=2, got {cfg.swav.n_large_crops}"
+    )
+    assert cfg.swav.n_small_crops == 6, (
+        f"Expected n_small_crops=6, got {cfg.swav.n_small_crops}"
+    )
+
+
+def test_swav_smoke_3_epochs(large_imagefolder):
+    """SwAVModule trains 3 epochs from YAML-derived config; no NaN; prototype norms ~1.0."""
+    L.seed_everything(42)
+
+    import methods.swav  # noqa: F401 -- trigger registration
+    from core.config import TrainConfig, SwAVConfig
+    from core.data import SSLDataModule, MultiCropDataset
+    from methods.swav.module import SwAVModule
+    from torchvision.datasets import ImageFolder
+
+    cfg = TrainConfig(
+        method="swav",
+        backbone="resnet18",
+        pretrained=False,
+        max_epochs=3,
+        warmup_epochs=0,
+        batch_size=8,
+        lr=1e-3,
+        weight_decay=1e-6,
+        optimizer="adamw",
+        n_views=8,
+        swav=SwAVConfig(
+            n_prototypes=10,
+            freeze_prototypes_epochs=1,
+            sinkhorn_iterations=3,
+            temperature=0.1,
+            epsilon=0.05,
+            n_large_crops=2,
+            large_size=32,
+            n_small_crops=6,
+            small_size=16,
+        ),
+    )
+
+    base_ds = ImageFolder(str(large_imagefolder))
+    multi_crop_ds = MultiCropDataset(
+        base_ds,
+        n_large_crops=2,
+        large_size=32,
+        n_small_crops=6,
+        small_size=16,
+        strong=True,
+    )
+    dm = SSLDataModule(
+        data_dir=str(large_imagefolder),
+        dataset=multi_crop_ds,
+        batch_size=8,
+        num_workers=0,
+    )
+
+    model = SwAVModule(cfg)
+    trainer = L.Trainer(
+        max_epochs=3,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+    )
+    trainer.fit(model, dm)
+
+    # No NaN loss -- check via logged metrics
+    train_loss = trainer.callback_metrics.get("train_loss")
+    if train_loss is not None:
+        assert not torch.isnan(train_loss), f"train_loss is NaN after 3 epochs"
+
+    # Prototype norms should be ~1.0 after normalization
+    norms = torch.norm(model.prototype_layer.linear.weight, dim=1)
+    assert torch.allclose(norms, torch.ones(10), atol=0.01), (
+        f"Prototype norms not ~1.0 after training: min={norms.min():.4f}, max={norms.max():.4f}"
+    )
