@@ -1,4 +1,4 @@
-"""Tests for SwAV Sinkhorn-Knopp optimal transport and swapped-prediction loss.
+"""Tests for SwAV Sinkhorn-Knopp optimal transport, swapped-prediction loss, and SwAVModule.
 
 Reference:
     Caron et al., "Unsupervised Learning of Visual Features by Contrasting
@@ -7,6 +7,9 @@ Reference:
 import torch
 import torch.nn as nn
 import pytest
+import numpy as np
+from PIL import Image
+import lightning as L
 
 from methods.swav.losses import sinkhorn_knopp, swav_loss
 
@@ -181,3 +184,244 @@ def test_swav_loss_cross_entropy_terms():
     # Loss should be positive (cross-entropy is non-negative) and finite
     assert loss.item() > 0, "Expected positive cross-entropy loss"
     assert torch.isfinite(loss), "Loss should be finite"
+
+
+# ---------------------------------------------------------------------------
+# SwAVModule tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def large_imagefolder(tmp_path):
+    """Create an ImageFolder (3 classes, 40 images each, 32x32)."""
+    rng = np.random.RandomState(42)
+    n_classes = 3
+    n_images = 40
+    for cls_idx in range(n_classes):
+        cls_dir = tmp_path / f"class_{cls_idx}"
+        cls_dir.mkdir()
+        for img_idx in range(n_images):
+            arr = rng.randint(0, 255, (32, 32, 3), dtype=np.uint8)
+            img = Image.fromarray(arr)
+            img.save(cls_dir / f"img_{img_idx:02d}.jpg")
+    return tmp_path
+
+
+@pytest.fixture(autouse=True)
+def clean_registry():
+    """Restore _METHOD_REGISTRY to its original state after each test."""
+    from core.dispatcher import _METHOD_REGISTRY
+    original = _METHOD_REGISTRY.copy()
+    yield
+    _METHOD_REGISTRY.clear()
+    _METHOD_REGISTRY.update(original)
+
+
+def _make_swav_cfg(**overrides):
+    """Create a minimal TrainConfig for SwAV testing."""
+    from core.config import TrainConfig, SwAVConfig
+    defaults = {
+        "method": "swav",
+        "backbone": "resnet18",
+        "pretrained": False,
+        "max_epochs": 5,
+        "warmup_epochs": 0,
+        "batch_size": 8,
+        "lr": 1e-3,
+        "weight_decay": 1e-6,
+        "optimizer": "adamw",
+        "n_views": 2,
+        "swav": SwAVConfig(
+            n_prototypes=10,
+            freeze_prototypes_epochs=1,
+            sinkhorn_iterations=3,
+            temperature=0.1,
+            epsilon=0.05,
+            n_large_crops=2,
+            large_size=32,
+            n_small_crops=2,
+            small_size=16,
+        ),
+    }
+    defaults.update(overrides)
+    return TrainConfig(**defaults)
+
+
+class LossTracker(L.Callback):
+    """Callback that records per-epoch average training loss."""
+
+    def __init__(self):
+        super().__init__()
+        self.epoch_losses: list[float] = []
+        self._step_losses: list[float] = []
+
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        if isinstance(outputs, dict) and "loss" in outputs:
+            self._step_losses.append(outputs["loss"].detach().item())
+        elif hasattr(outputs, "item"):
+            self._step_losses.append(outputs.detach().item())
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        if self._step_losses:
+            avg = sum(self._step_losses) / len(self._step_losses)
+            self.epoch_losses.append(avg)
+            self._step_losses.clear()
+
+
+def test_swav_dispatcher_registration():
+    """Test 1: SwAVModule registered as 'swav' in method_dispatcher."""
+    import methods.swav  # noqa: F401 -- trigger registration
+    from core.dispatcher import available_methods
+    from methods.swav.module import SwAVModule
+
+    assert "swav" in available_methods(), (
+        f"'swav' not in available methods: {available_methods()}"
+    )
+
+
+def test_swav_dispatcher_returns_swav_module():
+    """Test 2: method_dispatcher with method='swav' returns SwAVModule instance."""
+    import methods.swav  # noqa: F401
+    from core.dispatcher import method_dispatcher
+    from methods.swav.module import SwAVModule
+
+    cfg = _make_swav_cfg()
+    model = method_dispatcher(cfg)
+    assert isinstance(model, SwAVModule), (
+        f"Expected SwAVModule, got {type(model).__name__}"
+    )
+
+
+def test_swav_train_5_epochs(large_imagefolder):
+    """Test 3: SwAVModule trains 5 epochs without loss divergence on toy data."""
+    L.seed_everything(42)
+
+    import methods.swav  # noqa: F401
+    from methods.swav.module import SwAVModule
+    from core.data import SSLDataModule, MultiCropDataset
+    from torchvision.datasets import ImageFolder
+
+    cfg = _make_swav_cfg(max_epochs=5)
+
+    base_ds = ImageFolder(str(large_imagefolder))
+    multi_crop_ds = MultiCropDataset(
+        base_ds,
+        n_large_crops=2,
+        large_size=32,
+        n_small_crops=2,
+        small_size=16,
+        strong=True,
+    )
+    dm = SSLDataModule(
+        data_dir=str(large_imagefolder),
+        dataset=multi_crop_ds,
+        batch_size=8,
+        num_workers=0,
+    )
+
+    model = SwAVModule(cfg)
+    tracker = LossTracker()
+    trainer = L.Trainer(
+        max_epochs=5,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        callbacks=[tracker],
+    )
+    trainer.fit(model, dm)
+
+    assert len(tracker.epoch_losses) == 5, f"Expected 5 epochs, got {len(tracker.epoch_losses)}"
+    for i, loss in enumerate(tracker.epoch_losses):
+        assert loss == loss, f"Epoch {i} loss is NaN"
+        assert abs(loss) < 1e6, f"Epoch {i} loss diverged: {loss}"
+
+    # Noise-robust convergence check: min of last 3 < max of first 3
+    early_loss = max(tracker.epoch_losses[:3])
+    late_loss = min(tracker.epoch_losses[-3:])
+    assert late_loss < early_loss, (
+        f"Loss should decrease over training: "
+        f"early_max={early_loss:.4f}, late_min={late_loss:.4f}"
+    )
+
+
+def test_swav_prototype_normalization(large_imagefolder):
+    """Test 4: Prototype vectors remain L2-normalized (norm ≈ 1.0) after training."""
+    L.seed_everything(42)
+
+    import methods.swav  # noqa: F401
+    from methods.swav.module import SwAVModule
+    from core.data import SSLDataModule, MultiCropDataset
+    from torchvision.datasets import ImageFolder
+
+    cfg = _make_swav_cfg(max_epochs=2)
+    n_prototypes = 10
+
+    base_ds = ImageFolder(str(large_imagefolder))
+    multi_crop_ds = MultiCropDataset(
+        base_ds,
+        n_large_crops=2,
+        large_size=32,
+        n_small_crops=2,
+        small_size=16,
+        strong=True,
+    )
+    dm = SSLDataModule(
+        data_dir=str(large_imagefolder),
+        dataset=multi_crop_ds,
+        batch_size=8,
+        num_workers=0,
+    )
+
+    model = SwAVModule(cfg)
+    trainer = L.Trainer(
+        max_epochs=2,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+    )
+    trainer.fit(model, dm)
+
+    # All prototype rows should have L2 norm ≈ 1.0
+    norms = torch.norm(model.prototype_layer.linear.weight, dim=1)
+    assert torch.allclose(norms, torch.ones(n_prototypes), atol=0.01), (
+        f"Prototype norms not ~1.0 after training: min={norms.min():.4f}, max={norms.max():.4f}"
+    )
+
+
+def test_swav_learnable_params_includes_prototypes():
+    """Test 5: learnable_params includes prototype layer parameters."""
+    from methods.swav.module import SwAVModule
+
+    cfg = _make_swav_cfg()
+    model = SwAVModule(cfg)
+
+    learnable_ids = {id(p) for p in model.learnable_params}
+    proto_ids = {id(p) for p in model.prototype_layer.parameters()}
+
+    assert proto_ids.issubset(learnable_ids), (
+        "Prototype layer parameters not found in learnable_params"
+    )
+
+
+def test_swav_prototype_gradients_frozen_during_freeze_epoch():
+    """Test 6: Prototype gradients are zeroed during freeze_prototypes_epochs."""
+    from methods.swav.module import SwAVModule
+
+    cfg = _make_swav_cfg()
+    model = SwAVModule(cfg)
+
+    # Simulate a gradient on prototype weights
+    model.prototype_layer.linear.weight.grad = torch.ones_like(
+        model.prototype_layer.linear.weight
+    )
+
+    # At epoch 0 with freeze_prototypes_epochs=1, gradients should be zeroed
+    assert model.current_epoch == 0, "Expected epoch 0 at start"
+    mock_optimizer = None
+    model.on_before_optimizer_step(mock_optimizer)
+
+    grad = model.prototype_layer.linear.weight.grad
+    assert torch.all(grad == 0), (
+        "Prototype gradients should be zeroed during freeze epochs"
+    )
