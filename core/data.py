@@ -10,6 +10,9 @@ Provides:
 """
 
 import os
+import random
+from collections import defaultdict
+from typing import Iterator
 
 import torch
 import lightning as L
@@ -201,6 +204,73 @@ def ssl_collate_multi_crop(batch):
     return crops_list, torch.tensor(labels, dtype=torch.long)
 
 
+class ClassBalancedSampler(torch.utils.data.Sampler):
+    """Batch sampler that guarantees at least ``n_samples_per_class`` instances
+    per class in every batch.
+
+    Produces batches of size ``n_classes_per_batch * n_samples_per_class`` by
+    sampling ``n_classes_per_batch`` classes uniformly at random (without
+    replacement within a batch), then drawing ``n_samples_per_class`` indices
+    from each chosen class (with replacement if the class has fewer images).
+
+    Requires the dataset to expose a ``.targets`` attribute (list[int]), which
+    is available on ``torchvision.datasets.ImageFolder`` by default.
+
+    Args:
+        dataset: An ImageFolder-style dataset with a ``.targets`` attribute.
+        n_classes_per_batch: Number of distinct classes per batch.
+        n_samples_per_class: Number of samples per class per batch.
+
+    Note:
+        Pass this sampler to ``DataLoader(sampler=..., shuffle=False)``.
+        ``shuffle=True`` is mutually exclusive with a custom sampler and will
+        raise ``ValueError`` at DataLoader construction time.
+    """
+
+    def __init__(
+        self,
+        dataset: torch.utils.data.Dataset,
+        n_classes_per_batch: int,
+        n_samples_per_class: int,
+    ) -> None:
+        super().__init__()
+        self.n_classes_per_batch = n_classes_per_batch
+        self.n_samples_per_class = n_samples_per_class
+
+        # Build class -> [dataset_indices] map from dataset.targets
+        targets = dataset.targets  # list[int] from ImageFolder
+        self.class_indices: dict[int, list[int]] = defaultdict(list)
+        for idx, label in enumerate(targets):
+            self.class_indices[label].append(idx)
+        self.classes: list[int] = list(self.class_indices.keys())
+
+        if len(self.classes) < n_classes_per_batch:
+            raise ValueError(
+                f"Dataset has {len(self.classes)} classes but "
+                f"n_classes_per_batch={n_classes_per_batch}. "
+                "Reduce n_classes_per_batch to fit the dataset."
+            )
+
+        batch_size = n_classes_per_batch * n_samples_per_class
+        n_batches = max(1, len(targets) // batch_size)
+        self._length = n_batches * batch_size
+
+    def __iter__(self) -> Iterator[int]:
+        n_batches = self._length // (self.n_classes_per_batch * self.n_samples_per_class)
+        indices: list[int] = []
+        for _ in range(n_batches):
+            chosen_classes = random.sample(self.classes, self.n_classes_per_batch)
+            for cls in chosen_classes:
+                cls_idxs = self.class_indices[cls]
+                # random.choices samples with replacement — safe for small classes
+                chosen = random.choices(cls_idxs, k=self.n_samples_per_class)
+                indices.extend(chosen)
+        return iter(indices)
+
+    def __len__(self) -> int:
+        return self._length
+
+
 class SSLDataModule(L.LightningDataModule):
     """Lightning DataModule for SSL pretraining.
 
@@ -232,6 +302,8 @@ class SSLDataModule(L.LightningDataModule):
         size: int = 224,
         strong: bool = True,
         dataset: torch.utils.data.Dataset | None = None,
+        sampler_type: str | None = None,
+        n_classes_per_batch: int | None = None,
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -241,6 +313,8 @@ class SSLDataModule(L.LightningDataModule):
         self.size = size
         self.strong = strong
         self.dataset = dataset
+        self.sampler_type = sampler_type
+        self.n_classes_per_batch = n_classes_per_batch
 
     def setup(self, stage=None):
         if self.dataset is not None:
@@ -275,10 +349,29 @@ class SSLDataModule(L.LightningDataModule):
             collate = ssl_collate_multi_crop
         else:
             collate = ssl_collate_fn
+
+        if self.sampler_type == "class_balanced":
+            if self.n_classes_per_batch is None:
+                raise ValueError(
+                    "n_classes_per_batch must be set when sampler_type='class_balanced'"
+                )
+            # n_samples_per_class = batch_size // n_classes_per_batch
+            n_samples = max(1, self.batch_size // self.n_classes_per_batch)
+            sampler = ClassBalancedSampler(
+                self.train_dataset,
+                n_classes_per_batch=self.n_classes_per_batch,
+                n_samples_per_class=n_samples,
+            )
+            shuffle = False
+        else:
+            sampler = None
+            shuffle = True
+
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
-            shuffle=True,
+            sampler=sampler,
+            shuffle=shuffle,
             num_workers=self.num_workers,
             collate_fn=collate,
             drop_last=True,
