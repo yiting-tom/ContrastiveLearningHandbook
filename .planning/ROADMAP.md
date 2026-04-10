@@ -177,17 +177,13 @@ Plans:
   4. All three methods are selectable via YAML; MoCo v3 uses AdamW by default; gradient clipping is enabled
   5. `PredictorHead` is shared between BYOL, SimSiam, MoCo v3, and DINO without code duplication
 
-**Plans**: 8 plans
+**Plans**: 4 plans
 
 Plans:
-- [ ] 07-01: Extend `PredictorHead` (or verify it already covers) the MoCo v3 prediction MLP — 2-layer MLP on top of the projection MLP output; verify it is instantiated in `learnable_params` of the online branch only
-- [ ] 07-02: Implement `MoCoV3Module(BaseSSLModule)` — ViT backbone via timm, in-batch symmetric contrastive loss (no queue), momentum encoder (m=0.99), prediction MLP; freeze patch projection layer immediately after model construction; use AdamW + gradient clipping via `Trainer(gradient_clip_val=...)`; register as `moco_v3`
-- [ ] 07-03: Write unit test for `MoCoV3Module` that asserts `backbone.patch_embed.proj.weight.requires_grad == False` and `backbone.patch_embed.proj.bias.requires_grad == False` after construction
-- [ ] 07-04: Implement DINO multi-crop assignment logic — teacher receives only the 2 global crops; student receives all 2+N crops; implement the cross-entropy loss `sum_over_student_crops(-q_teacher * log_softmax(student_logits / tau_s))`
-- [ ] 07-05: Implement `DINOModule(BaseSSLModule)` — student (online) and teacher (EMA, no gradient); centering vector updated with teacher output before loss computation; sharpening via low teacher temperature (cosine warmup from 0.04->0.07); output dim 65536; gradient clipping max_norm=3.0; `MultiCropDataset` integration (2 global + 6 local); register as `dino`
-- [ ] 07-06: Implement centering unit test — assert that centering vector equals running mean of teacher outputs after 3 steps; assert centering update happens before loss computation in call order
-- [ ] 07-07: Implement `DINOv2Tutorial` — standalone `eval/dinov2_demo.py` script that loads pretrained DINOv2 via timm or `facebookresearch/dinov2`, runs k-NN evaluation and linear probing on a configurable dataset; document register-token API difference in comments; clarify "DINOv3" does not exist in the docstring
-- [ ] 07-08: Write per-method YAML configs for moco_v3 and dino; add DOC-02 docstrings; smoke-test for 3 epochs
+- [ ] 07-01-PLAN.md — MoCoV3Config, DINOConfig extension, gradient_clip_val on TrainConfig, PredictorHead docstring update (INFRA-05)
+- [ ] 07-02-PLAN.md — MoCoV3Module implementation with ViT patch freeze, symmetric in-batch loss, prediction MLP, momentum encoder, tests
+- [ ] 07-03-PLAN.md — DINOModule implementation with student-teacher self-distillation, centering + sharpening, multi-crop, tests
+- [ ] 07-04-PLAN.md — DINOv2 demo script, YAML configs for moco_v3 and dino, DOC-02 docstrings, smoke tests
 
 **UI hint**: no
 
