@@ -1,0 +1,50 @@
+# Supervised Contrastive Learning — Stage 2 (Linear Fine-tuning)
+# Khosla et al., NeurIPS 2020 — "Supervised Contrastive Learning"
+# arXiv: https://arxiv.org/abs/2004.11362
+#
+# STAGE 2 of 2: Freeze backbone from stage 1; train linear head with SGD.
+# Load stage-1 checkpoint via --ckpt_path argument.
+#
+# ── Two-stage workflow ─────────────────────────────────────────────────────
+#   Stage 1 (backbone pretraining):
+#       python train.py --config configs/supcon_stage1_resnet18.yaml
+#
+#   Stage 2 (this config):
+#       python train.py --config configs/supcon_stage2_resnet18.yaml \
+#           --ckpt_path logs/supcon/version_0/checkpoints/last.ckpt
+#
+# ── Key implementation notes ───────────────────────────────────────────────
+# weight_decay MUST be 0.0:
+#   The linear probe is a single layer applied to frozen features. Nonzero
+#   weight decay regularizes away the linear classifier's signal. SGD with
+#   momentum=0.9 and weight_decay=0.0 is the standard linear probe setup
+#   from the SupCon paper (Table 5).
+#
+# ClassBalancedSampler NOT used in stage 2:
+#   Stage 2 trains a CE classifier, not a contrastive loss. Standard random
+#   shuffle is correct. The class-balanced sampler is only needed in stage 1.
+#
+# n_views: 1 for stage 2:
+#   Multi-view augmentation is unnecessary for cross-entropy training on a
+#   frozen backbone. Using 1 view halves the data loading cost.
+
+method: supcon_finetune
+backbone: resnet18
+pretrained: false
+
+max_epochs: 100
+warmup_epochs: 0
+batch_size: 256
+lr: 0.1
+weight_decay: 0.0
+optimizer: sgd
+n_views: 1
+data_dir: data
+num_workers: 4
+
+supcon:
+  temperature: 0.07
+  n_samples_per_class: 2
+  n_classes_per_batch: 128
+  num_classes: 10            # REQUIRED: must match the number of classes in the dataset
+  projection_dim: 128
