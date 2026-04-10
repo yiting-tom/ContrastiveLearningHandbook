@@ -69,20 +69,6 @@ class SwAVConfig(_StrictBase):
     small_size: int = 96
 
 
-class InfoMinConfig(_StrictBase):
-    """InfoMin method-specific hyper-parameters.
-
-    Controls the aggressive augmentation policy that minimizes mutual
-    information between views while retaining task-relevant information.
-    """
-
-    temperature: float = 0.5
-    projection_dim: int = 128
-    color_strength: float = 1.5
-    grayscale_prob: float = 0.4
-    use_blur: bool = False
-
-
 class BarlowTwinsConfig(_StrictBase):
     """Barlow Twins method-specific hyper-parameters."""
 
@@ -96,6 +82,22 @@ class SimSiamConfig(_StrictBase):
     predictor_hidden_dim: int = 512
 
 
+class MoCoV3Config(_StrictBase):
+    """MoCo v3 (Chen et al., ICCV 2021) method-specific hyper-parameters.
+
+    Differs from MoCo v1/v2 in three key ways:
+    - temperature=0.2 differs from MoCo v1/v2's 0.07 (per paper): higher
+      temperature improves stability with ViT backbones.
+    - momentum=0.99 differs from v1/v2's 0.999 (per paper): slower EMA gives
+      better representations with large-batch ViT training.
+    - No queue_size -- MoCo v3 uses in-batch keys only.
+    """
+
+    temperature: float = 0.2
+    momentum: float = 0.99
+    predictor_hidden_dim: int = 4096
+
+
 class DINOConfig(_StrictBase):
     """DINO method-specific hyper-parameters."""
 
@@ -103,6 +105,8 @@ class DINOConfig(_StrictBase):
     teacher_temp: float = 0.04
     warmup_teacher_temp: float = 0.07
     warmup_teacher_temp_epochs: int = 30
+    student_temp: float = 0.1
+    centering_momentum: float = 0.9
 
 
 class SupConConfig(_StrictBase):
@@ -229,6 +233,7 @@ class TrainConfig(_StrictBase):
     weight_decay: float = 1e-6
     optimizer: Literal["adamw", "sgd", "lars"] = "adamw"
     scheduler: Literal["warmup_cosine"] = "warmup_cosine"
+    gradient_clip_val: Optional[float] = None
 
     # Data
     n_views: int = 2
@@ -238,6 +243,7 @@ class TrainConfig(_StrictBase):
     # Per-method sub-configs (all Optional, default None)
     simclr: Optional[SimCLRConfig] = None
     moco: Optional[MoCoConfig] = None
+    moco_v3: Optional[MoCoV3Config] = None
     byol: Optional[BYOLConfig] = None
     swav: Optional[SwAVConfig] = None
     infomin: Optional[InfoMinConfig] = None
@@ -247,7 +253,6 @@ class TrainConfig(_StrictBase):
     supcon: Optional[SupConConfig] = None
     instance_discrimination: Optional[InstanceDiscriminationConfig] = None
     invariant_spread: Optional[InvariantSpreadConfig] = None
-    infomin: Optional[InfoMinConfig] = None
 
     # Evaluation
     eval: Optional[EvalConfig] = None
