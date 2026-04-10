@@ -1,0 +1,32 @@
+# MoCo v3 with ViT-Small (Chen et al., ICCV 2021)
+#
+# Key differences from MoCo v1/v2:
+#   - No queue -- uses in-batch keys only (large batch required)
+#   - ViT backbone with frozen patch projection (stability trick)
+#   - AdamW optimizer (not SGD/LARS)
+#   - temperature=0.2 (not 0.07)
+#   - momentum=0.99 (not 0.999)
+#   - Gradient clipping recommended for ViT training stability
+#
+# Training: python train.py --config configs/moco_v3_vit_small.yaml
+
+method: moco_v3
+backbone: vit_small_patch16_224
+pretrained: false
+
+max_epochs: 300
+warmup_epochs: 40
+batch_size: 256
+lr: 1.5e-4
+weight_decay: 0.1
+optimizer: adamw
+gradient_clip_val: 1.0
+
+n_views: 2
+data_dir: data
+num_workers: 4
+
+moco_v3:
+  temperature: 0.2
+  momentum: 0.99
+  predictor_hidden_dim: 4096

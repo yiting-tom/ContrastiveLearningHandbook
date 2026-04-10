@@ -1,0 +1,49 @@
+# DINO with ViT-Small (Caron et al., ICCV 2021)
+#
+# Student-teacher self-distillation with centering + sharpening.
+# Teacher sees only global crops; student sees all crops.
+#
+# Multi-crop: 2 global (224x224) + 6 local (96x96) = 8 views total.
+# Memory usage is ~4x SimCLR -- reduce batch_size accordingly.
+#
+# SSLDataModule uses a MultiCropDataset when passed via the dataset parameter
+# in train.py. The swav block below documents multi-crop settings for reference;
+# the data pipeline is configured programmatically (not purely from YAML).
+#
+# Training: python train.py --config configs/dino_vit_small.yaml
+
+method: dino
+backbone: vit_small_patch16_224
+pretrained: false
+
+max_epochs: 300
+warmup_epochs: 10
+batch_size: 64
+lr: 5e-4
+weight_decay: 0.04
+optimizer: adamw
+gradient_clip_val: 3.0
+
+n_views: 8
+data_dir: data
+num_workers: 4
+
+dino:
+  n_prototypes: 65536
+  teacher_temp: 0.04
+  warmup_teacher_temp: 0.07
+  warmup_teacher_temp_epochs: 30
+  student_temp: 0.1
+  centering_momentum: 0.9
+
+# Multi-crop settings (shared with SwAV infra)
+swav:
+  n_large_crops: 2
+  large_size: 224
+  n_small_crops: 6
+  small_size: 96
+  n_prototypes: 65536
+  freeze_prototypes_epochs: 0
+  sinkhorn_iterations: 3
+  temperature: 0.1
+  epsilon: 0.05
