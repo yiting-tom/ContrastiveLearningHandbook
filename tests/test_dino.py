@@ -307,9 +307,13 @@ def test_prototype_output_dim():
 
 def test_dispatcher_dino():
     """method_dispatcher with method='dino' must return DINOModule instance."""
-    import methods  # noqa: F401 -- triggers register_method calls
-    from core.dispatcher import method_dispatcher
+    import methods.dino  # noqa: F401 -- trigger registration (no-op if cached)
+    from core.dispatcher import method_dispatcher, register_method, available_methods
     from methods.dino.module import DINOModule
+
+    # Guard: re-register if clean_registry cleared the registry after a prior import
+    if "dino" not in available_methods():
+        register_method("dino", DINOModule)
 
     cfg = make_toy_cfg()
     module = method_dispatcher(cfg)
@@ -332,10 +336,15 @@ def test_dino_train_3_epochs(large_imagefolder):
     - n_prototypes=128 (reduced for speed)
     - Verifies loss is finite and not diverging (last epoch < 2 * first epoch)
     """
-    import methods  # noqa: F401 -- triggers register_method calls
+    import methods.dino  # noqa: F401 -- trigger registration (no-op if cached)
+    from core.dispatcher import register_method, available_methods
     from methods.dino.module import DINOModule
     from core.data import MultiCropDataset, ssl_collate_multi_crop
     from torch.utils.data import DataLoader
+
+    # Guard: re-register if clean_registry cleared the registry after a prior import
+    if "dino" not in available_methods():
+        register_method("dino", DINOModule)
 
     cfg = TrainConfig(
         method="dino",
