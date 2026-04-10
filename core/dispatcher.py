@@ -97,3 +97,23 @@ def available_methods() -> list[str]:
         registry.  Useful for building help text or validation error messages.
     """
     return sorted(_METHOD_REGISTRY.keys())
+
+
+def get_method(name: str) -> type[BaseSSLModule]:
+    """Look up a registered method class by name.
+
+    Args:
+        name: Method name as registered with register_method().
+
+    Returns:
+        The BaseSSLModule subclass registered under name.
+
+    Raises:
+        ValueError: If name is not registered.
+    """
+    if name not in _METHOD_REGISTRY:
+        available = sorted(_METHOD_REGISTRY.keys())
+        raise ValueError(
+            f"Unknown method: '{name}'. Available methods: {available}"
+        )
+    return _METHOD_REGISTRY[name]
