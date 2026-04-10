@@ -12,3 +12,4 @@ import methods.byol                     # noqa: F401
 import methods.simsiam                  # noqa: F401
 import methods.barlow_twins             # noqa: F401
 import methods.moco_v3                  # noqa: F401
+import methods.dino                     # noqa: F401
