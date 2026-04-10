@@ -106,3 +106,113 @@ class InfoNCELoss(nn.Module):
         labels = torch.zeros(z_i.shape[0], dtype=torch.long, device=z_i.device)
 
         return F.cross_entropy(logits, labels, reduction=self.reduction)
+
+
+class SupConLoss(nn.Module):
+    """Supervised Contrastive Loss (Khosla et al., NeurIPS 2020).
+
+    Extends SimCLR's NT-Xent loss to the labeled setting: every in-batch
+    sample sharing the same class label is treated as a positive for an anchor,
+    not just the other augmented view.
+
+    Uses the **sum-outside** formulation (Eq. 2 of the paper):
+
+        L_i = -1/|P(i)| * sum_{p in P(i)} [s_{ip}/tau - log sum_{a != i} exp(s_{ia}/tau)]
+
+    When ``labels=None``, degenerates exactly to SimCLR NT-Xent: the only
+    positive for anchor z_i[k] is z_j[k] (and vice versa), giving one
+    positive per anchor.
+
+    Paper: "Supervised Contrastive Learning"
+    Authors: Prannay Khosla, Piotr Tian, Chen Wang, Aaron Neimark,
+             Piyush Rai, Chen Xu, Dilip Krishnan, Serge Belongie
+    Venue: NeurIPS 2020
+    arXiv: https://arxiv.org/abs/2004.11362
+
+    Args:
+        temperature: Softmax temperature. Default: 0.07 (paper recommendation).
+        reduction: 'mean' or 'sum'. Default: 'mean'.
+
+    Gotchas:
+    - Use sum-outside (this implementation), NOT sum-inside (Eq. 1). Eq. 2 is
+      empirically stronger and is the recommended variant.
+    - Features are L2-normalized inside forward(); do NOT pre-normalize inputs.
+    - With temperature=0.07, logits scale by ~14x — never use raw exp without
+      logsumexp stabilization (handled here via torch.logsumexp).
+    - Anchors whose class has no other in-batch sample (singleton class) have
+      zero positives and are excluded from the mean to avoid dividing by zero.
+    """
+
+    def __init__(self, temperature: float = 0.07, reduction: str = "mean") -> None:
+        super().__init__()
+        self.temperature = temperature
+        self.reduction = reduction
+
+    def forward(
+        self,
+        z_i: torch.Tensor,
+        z_j: torch.Tensor,
+        labels: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Compute SupCon loss.
+
+        Args:
+            z_i: Projection outputs from view 1, shape [B, D].
+            z_j: Projection outputs from view 2, shape [B, D].
+            labels: Integer class labels, shape [B]. When None, degenerates
+                    to SimCLR NT-Xent (one positive per anchor).
+
+        Returns:
+            Scalar loss tensor.
+        """
+        B = z_i.shape[0]
+        device = z_i.device
+
+        # L2-normalize both views (matching InfoNCELoss convention)
+        z_i = F.normalize(z_i, dim=1)
+        z_j = F.normalize(z_j, dim=1)
+
+        # Stack to [2B, D]: first B rows = view-i, last B rows = view-j
+        features = torch.cat([z_i, z_j], dim=0)  # [2B, D]
+
+        # --- Build positive mask [2B, 2B] ---
+        self_mask = torch.eye(2 * B, dtype=torch.bool, device=device)
+
+        if labels is None:
+            # SimCLR mode: one positive per anchor (the other view)
+            positive_mask = torch.zeros(2 * B, 2 * B, dtype=torch.bool, device=device)
+            for k in range(B):
+                positive_mask[k, B + k] = True
+                positive_mask[B + k, k] = True
+        else:
+            # Supervised mode: all same-class anchors (excluding self)
+            labels_2v = labels.repeat(2)  # [2B]
+            label_eq = labels_2v.unsqueeze(0) == labels_2v.unsqueeze(1)  # [2B, 2B]
+            positive_mask = label_eq & ~self_mask
+
+        # --- Similarity matrix [2B, 2B] scaled by temperature ---
+        sim = features @ features.T / self.temperature  # [2B, 2B]
+
+        # Exclude self from denominator by masking diagonal to -inf
+        sim_no_self = sim.masked_fill(self_mask, float("-inf"))
+
+        # log( sum_{a != i} exp(sim[i,a] / tau) ) — stable via logsumexp
+        log_denom = torch.logsumexp(sim_no_self, dim=1)  # [2B]
+
+        # log-probability of each positive pair for anchor i
+        log_prob = sim - log_denom.unsqueeze(1)  # [2B, 2B]
+
+        # Per-anchor loss: -mean over positives (sum-outside: division outside log)
+        n_positives = positive_mask.sum(dim=1).float()  # [2B]
+        valid = n_positives > 0  # exclude singleton-class anchors
+
+        # Sum log-prob over positives; divide by |P(i)| (outside the log)
+        per_anchor_loss = -(log_prob * positive_mask).sum(dim=1) / n_positives.clamp(min=1)
+
+        if not valid.any():
+            return torch.tensor(0.0, device=device, requires_grad=True)
+
+        if self.reduction == "mean":
+            return per_anchor_loss[valid].mean()
+        else:
+            return per_anchor_loss[valid].sum()
