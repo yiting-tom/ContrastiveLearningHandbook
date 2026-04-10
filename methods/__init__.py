@@ -13,3 +13,4 @@ import methods.simsiam                  # noqa: F401
 import methods.barlow_twins             # noqa: F401
 import methods.moco_v3                  # noqa: F401
 import methods.dino                     # noqa: F401
+import methods.supcon                   # noqa: F401
