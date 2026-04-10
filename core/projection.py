@@ -62,10 +62,14 @@ class ProjectionHead(nn.Module):
 
 
 class PredictorHead(nn.Module):
-    """Predictor MLP for BYOL and SimSiam online branch.
+    """Predictor MLP for BYOL, SimSiam, MoCo v3, and DINO student head.
 
     Sits on top of the projector on the online (student) branch only.
     The target (teacher/momentum) branch never has a predictor.
+
+    The ``'standard'`` variant covers BYOL (Grill et al., 2020), MoCo v3
+    (Chen et al., ICCV 2021), and the DINO student prediction head.
+    The ``'bottleneck'`` variant covers SimSiam (Chen & He, CVPR 2021).
 
     Two variants:
 

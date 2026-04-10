@@ -137,3 +137,16 @@ def test_invalid_predictor_type_raises_value_error():
     """Invalid predictor_type raises ValueError with helpful message."""
     with pytest.raises(ValueError, match="predictor_type"):
         PredictorHead(predictor_type="unknown_type", input_dim=128, output_dim=128)
+
+
+# ---------------------------------------------------------------------------
+# Test 8: PredictorHead docstring lists all consumer methods (INFRA-05)
+# ---------------------------------------------------------------------------
+
+def test_predictor_docstring_lists_all_consumers():
+    """INFRA-05: PredictorHead docstring must list all consumer methods."""
+    doc = PredictorHead.__doc__
+    assert "BYOL" in doc
+    assert "SimSiam" in doc
+    assert "MoCo v3" in doc
+    assert "DINO" in doc
