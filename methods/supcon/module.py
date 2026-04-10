@@ -242,3 +242,82 @@ class SupConFinetuneModule(BaseSSLModule):
             weight_decay=0.0,
         )
         return optimizer
+
+    @classmethod
+    def from_stage1_ckpt(
+        cls,
+        ckpt_path: str,
+        cfg: TrainConfig,
+        map_location: str = "cpu",
+    ) -> "SupConFinetuneModule":
+        """Construct a stage-2 module from a stage-1 SupConModule checkpoint.
+
+        Only backbone.* weights are loaded from the checkpoint; projector.*
+        weights are discarded (the classifier operates on backbone output h,
+        not projection z).
+
+        Args:
+            ckpt_path: Path to the Lightning checkpoint from stage-1 training.
+            cfg: TrainConfig for stage-2 (must have cfg.supcon.num_classes set).
+            map_location: torch.load map_location. Default: 'cpu'.
+
+        Returns:
+            SupConFinetuneModule with backbone loaded from stage-1 checkpoint
+            and backbone frozen.
+
+        Example::
+
+            module = SupConFinetuneModule.from_stage1_ckpt(
+                ckpt_path="logs/supcon/version_0/checkpoints/last.ckpt",
+                cfg=cfg,
+            )
+            trainer.fit(module, datamodule=dm)
+        """
+        module = cls(cfg)
+        state = torch.load(ckpt_path, map_location=map_location)
+
+        # Lightning checkpoints wrap state_dict under 'state_dict' key
+        raw_state = state.get("state_dict", state)
+
+        # Extract only backbone.* keys
+        backbone_state = {
+            k: v for k, v in raw_state.items()
+            if k.startswith("backbone.")
+        }
+
+        if not backbone_state:
+            raise ValueError(
+                f"No 'backbone.*' keys found in checkpoint at {ckpt_path}. "
+                "Ensure the checkpoint is from a SupConModule stage-1 run."
+            )
+
+        missing, unexpected = module.load_state_dict(backbone_state, strict=False)
+        # Report any unexpected keys (projector.* missing from strict=False is expected)
+        backbone_unexpected = [k for k in unexpected if k.startswith("backbone.")]
+        if backbone_unexpected:
+            import warnings
+            warnings.warn(
+                f"Unexpected backbone keys in checkpoint: {backbone_unexpected}"
+            )
+
+        module.freeze_backbone()
+        return module
+
+    def validation_step(self, batch, batch_idx):
+        """Compute validation accuracy for stage-2 fine-tuning monitoring.
+
+        Args:
+            batch: Tuple of (views, labels). Single view expected.
+            batch_idx: Current batch index.
+        """
+        views, labels = batch
+        x = views[0] if views.dim() == 5 else views
+        with torch.no_grad():
+            h = self.backbone(x)
+        logits = self.classifier(h)
+        loss = F.cross_entropy(logits, labels)
+        preds = logits.argmax(dim=1)
+        acc = (preds == labels).float().mean()
+        self.log("val/loss", loss, prog_bar=True)
+        self.log("val/acc", acc, prog_bar=True)
+        return loss
