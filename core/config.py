@@ -114,6 +114,9 @@ class SupConConfig(_StrictBase):
 
     temperature: float = 0.07
     n_samples_per_class: int = 2
+    n_classes_per_batch: int = 8    # classes sampled per batch by ClassBalancedSampler
+    num_classes: int = 10           # number of output classes (for stage-2 head)
+    projection_dim: int = 128       # projection head output dimension
 
 
 class InstanceDiscriminationConfig(_StrictBase):
