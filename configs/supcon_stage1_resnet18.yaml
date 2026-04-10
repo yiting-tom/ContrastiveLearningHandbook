@@ -1,0 +1,52 @@
+# Supervised Contrastive Learning — Stage 1 (Pretraining)
+# Khosla et al., NeurIPS 2020 — "Supervised Contrastive Learning"
+# arXiv: https://arxiv.org/abs/2004.11362
+#
+# STAGE 1 of 2: Pretrain backbone + projection head with SupCon loss.
+# No classifier is used in this stage.
+#
+# ── Two-stage workflow ─────────────────────────────────────────────────────
+#   Stage 1 (this config):
+#       python train.py --config configs/supcon_stage1_resnet18.yaml
+#
+#   Stage 2 (linear fine-tuning):
+#       python train.py --config configs/supcon_stage2_resnet18.yaml \
+#           --ckpt_path logs/supcon/version_0/checkpoints/last.ckpt
+#
+# ── Key implementation notes ───────────────────────────────────────────────
+# Sum-outside formulation (Eq. 2, NOT Eq. 1):
+#   Loss = -1/|P(i)| * Σ_{p∈P(i)} [s_{ip}/τ − log Σ_{a≠i} exp(s_{ia}/τ)]
+#   The division by |P(i)| is OUTSIDE the log. Eq. 1 (inside the log) is
+#   mathematically valid but empirically weaker. SupConLoss implements Eq. 2.
+#
+# Class-balanced sampler REQUIRED:
+#   Without ClassBalancedSampler, many classes are singletons in a batch and
+#   have zero supervised positives. The SupCon loss degrades to SimCLR.
+#   n_classes_per_batch * n_samples_per_class should equal batch_size.
+#   Default: 128 classes × 2 samples = 256 batch size.
+#
+# Do NOT add a classifier in stage 1:
+#   Mixing CE loss with SupCon during pretraining collapses the contrastive
+#   representation (warned against in the SupCon paper). Use this config for
+#   stage 1 only, then switch to supcon_stage2_resnet18.yaml.
+
+method: supcon
+backbone: resnet18
+pretrained: false
+
+max_epochs: 200
+warmup_epochs: 10
+batch_size: 256
+lr: 0.5
+weight_decay: 1.0e-4
+optimizer: lars
+n_views: 2
+data_dir: data
+num_workers: 4
+
+supcon:
+  temperature: 0.07
+  n_samples_per_class: 2
+  n_classes_per_batch: 128   # 128 classes × 2 samples/class = 256 batch size
+  num_classes: 10            # used only by stage-2 module (SupConFinetuneModule)
+  projection_dim: 128
