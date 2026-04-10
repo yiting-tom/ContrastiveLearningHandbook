@@ -180,10 +180,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — MoCoV3Config, DINOConfig extension, gradient_clip_val on TrainConfig, PredictorHead docstring update (INFRA-05)
-- [ ] 07-02-PLAN.md — MoCoV3Module implementation with ViT patch freeze, symmetric in-batch loss, prediction MLP, momentum encoder, tests
-- [ ] 07-03-PLAN.md — DINOModule implementation with student-teacher self-distillation, centering + sharpening, multi-crop, tests
-- [ ] 07-04-PLAN.md — DINOv2 demo script, YAML configs for moco_v3 and dino, DOC-02 docstrings, smoke tests
+- [x] 07-01-PLAN.md — MoCoV3Config, DINOConfig extension, gradient_clip_val on TrainConfig, PredictorHead docstring update (INFRA-05)
+- [x] 07-02-PLAN.md — MoCoV3Module implementation with ViT patch freeze, symmetric in-batch loss, prediction MLP, momentum encoder, tests
+- [x] 07-03-PLAN.md — DINOModule implementation with student-teacher self-distillation, centering + sharpening, multi-crop, tests
+- [x] 07-04-PLAN.md — DINOv2 demo script, YAML configs for moco_v3 and dino, DOC-02 docstrings, smoke tests
 
 **UI hint**: no
 
