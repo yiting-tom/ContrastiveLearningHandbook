@@ -203,10 +203,10 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 08-01: Implement `SupConLoss(temperature, reduction, labels=None)` — when `labels=None`, degenerate to SimCLR NT-Xent (one positive per anchor); when labels provided, use sum-outside formulation (Eq. 2 in paper): `loss_i = -1/|P(i)| * sum_{p in P(i)} [s_{ip}/tau - log sum_{a != i} exp(s_{ia}/tau)]`; write unit test confirming SimCLR equivalence when labels=None
-- [ ] 08-02: Implement class-balanced sampler `ClassBalancedSampler(dataset, n_classes_per_batch, n_samples_per_class)` — guarantees at least `n_samples_per_class` per class per batch; integrate into `SSLDataModule` under `sampler: class_balanced` config key
-- [ ] 08-03: Implement `SupConModule(BaseSSLModule)` — two augmented views, 2-layer projection head, `SupConLoss` with labels from batch; stage-1-only (no classifier during pretraining); `ClassBalancedSampler` wired in; register as `supcon`
-- [ ] 08-04: Implement stage-2 fine-tuning via `LinearProbeModule` reuse or a dedicated `SupConFinetuneModule` — freeze backbone, train linear head with SGD, weight_decay=0.0; document two-stage workflow in module docstring with explicit command sequence
+- [x] 08-01: Implement `SupConLoss(temperature, reduction, labels=None)` — when `labels=None`, degenerate to SimCLR NT-Xent (one positive per anchor); when labels provided, use sum-outside formulation (Eq. 2 in paper): `loss_i = -1/|P(i)| * sum_{p in P(i)} [s_{ip}/tau - log sum_{a != i} exp(s_{ia}/tau)]`; write unit test confirming SimCLR equivalence when labels=None
+- [x] 08-02: Implement class-balanced sampler `ClassBalancedSampler(dataset, n_classes_per_batch, n_samples_per_class)` — guarantees at least `n_samples_per_class` per class per batch; integrate into `SSLDataModule` under `sampler: class_balanced` config key
+- [x] 08-03: Implement `SupConModule(BaseSSLModule)` — two augmented views, 2-layer projection head, `SupConLoss` with labels from batch; stage-1-only (no classifier during pretraining); `ClassBalancedSampler` wired in; register as `supcon`
+- [x] 08-04: Implement stage-2 fine-tuning via `LinearProbeModule` reuse or a dedicated `SupConFinetuneModule` — freeze backbone, train linear head with SGD, weight_decay=0.0; document two-stage workflow in module docstring with explicit command sequence
 - [ ] 08-05: Write YAML config for both stages; add DOC-02 docstring with sum-outside gotcha, class-sampler requirement, and two-stage training note; smoke-test stage 1 for 3 epochs
 
 **UI hint**: no
