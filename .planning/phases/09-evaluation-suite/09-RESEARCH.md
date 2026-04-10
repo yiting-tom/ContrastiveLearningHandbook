@@ -429,7 +429,7 @@ class FinetuneModule(L.LightningModule):
 | A3 | ViT backbone in timm exposes `backbone.blocks[-1].norm1` for CAM target layer | Code Examples | Need to inspect actual timm ViT attribute names at implementation time |
 | A4 | `faiss-cpu` numpy array requirements (float32, C-contiguous) | Pitfall 1 | Need `.astype(np.float32)` and `.contiguous()` before FAISS calls |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Checkpoint kwarg name for `load_from_checkpoint`**
    - What we know: Lightning's `load_from_checkpoint` passes extra kwargs to `__init__`. BaseSSLModule takes `cfg: TrainConfig`.
