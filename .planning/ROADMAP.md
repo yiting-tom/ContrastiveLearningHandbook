@@ -225,16 +225,14 @@ Plans:
   5. `eval/finetune.py` uses separate LR groups (backbone 1e-4, head 1e-3) and the fine-tuned model reaches higher accuracy than the linear probe on the same dataset
   6. `eval/cam_vis.py` runs on 8 reference images using `EigenCAM` by default for SSL (no classifier); switches to `GradCAM` when a classifier is present; saves CAM overlay images
 
-**Plans**: 7 plans
+**Plans**: 5 plans
 
 Plans:
-- [ ] 09-01: Implement `KNNCallback(L.Callback)` — builds L2-normalized feature bank at `on_validation_epoch_end`; temperature-scaled weighted voting; FAISS `IndexFlatIP` path for datasets >100K; configurable `k`, `temperature`, `every_n_epochs` from `eval.knn` YAML sub-config; logs `eval/knn_acc` via `pl_module.log`
-- [ ] 09-02: Implement `eval/linear_probe.py` and `LinearProbeModule` — loads checkpoint, calls `backbone.requires_grad_(False)`, pre-extracts and caches features to disk on first run, trains linear head with SGD + MultiStepLR at [60, 80]; reports top-1 accuracy; weight_decay forced to 0.0 with assertion
-- [ ] 09-03: Implement `eval/tsne_vis.py` — PCA pre-reduction to 50 dims, `TSNE(init='pca', metric='cosine', learning_rate='auto')`, sweep 3 perplexity values, save each plot with perplexity in filename, add warning comment about not interpreting global distances from t-SNE
-- [ ] 09-04: Implement `eval/umap_vis.py` — `umap.UMAP(metric='cosine', random_state=42)`, run on up to 5000 samples, return reducer for new-sample mapping; print `torchdr` suggestion for >50K datasets; save PNG
-- [ ] 09-05: Implement `eval/finetune.py` and `FinetuneModule` — unfreezes backbone, two LR param groups (backbone 1e-4, head 1e-3), AdamW + warmup-cosine scheduler, `freeze_bn=True` option that keeps BN in eval mode; config under `eval.finetune` in YAML
-- [ ] 09-06: Implement `eval/cam_vis.py` — `pytorch-grad-cam` integration; `EigenCAM` as default (no classifier required); `GradCAM` when `classifier` argument provided; architecture-aware target layer selection (ResNet: `backbone.layer4[-1]`; ViT: `backbone.blocks[-1].norm1` with `vit_reshape_transform`); save overlay images for 8-16 reference images
-- [ ] 09-07: Write integration test that runs the full evaluation pipeline (k-NN + linear probe + t-SNE + UMAP + CAM) on a SimCLR checkpoint trained for 5 epochs on CIFAR-10; assert all output files exist and `eval/knn_acc > 0.1`
+- [ ] 09-01-PLAN.md — KNNCallback (Lightning Callback) with FAISS/brute-force k-NN, temperature-scaled weighted voting, epoch scheduling, eval dependencies installation
+- [ ] 09-02-PLAN.md — LinearProbeModule + eval/linear_probe.py with frozen backbone, SGD weight_decay=0.0, MultiStepLR, feature caching to disk
+- [ ] 09-03-PLAN.md — eval/tsne_vis.py (PCA + t-SNE perplexity sweep) and eval/umap_vis.py (cosine UMAP with torchdr suggestion)
+- [ ] 09-04-PLAN.md — eval/finetune.py (FinetuneModule with dual LR groups, freeze_bn) and eval/cam_vis.py (EigenCAM/GradCAM with architecture-aware target layers)
+- [ ] 09-05-PLAN.md — Integration test: synthetic checkpoint + synthetic ImageFolder, full eval pipeline smoke test
 
 **UI hint**: no
 
@@ -279,5 +277,5 @@ Plans:
 | 6. No-Negative Methods | 0/7 | Not started | - |
 | 7. Transformer Era | 0/8 | Not started | - |
 | 8. Supervised Contrastive | 0/5 | Not started | - |
-| 9. Evaluation Suite | 0/7 | Not started | - |
+| 9. Evaluation Suite | 0/5 | Not started | - |
 | 10. Documentation and Tutorial | 0/6 | Not started | - |
