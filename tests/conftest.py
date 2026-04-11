@@ -1,4 +1,10 @@
 """Shared pytest fixtures for the contrastive learning tutorial repo."""
+# macOS: FAISS ships its own OpenMP runtime which can conflict with PyTorch's.
+# Setting this before any imports prevents a segfault when both are loaded.
+# Safe for tutorial use on macOS; no effect on Linux.
+import os
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 import numpy as np
 import pytest
 import torch
