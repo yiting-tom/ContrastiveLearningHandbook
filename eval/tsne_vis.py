@@ -115,8 +115,11 @@ def run_tsne(
         labels = labels[idx]
 
     # PCA pre-reduction: reduces dimensionality before t-SNE for speed and stability
+    # Cap n_components to min(50, n_samples-1) to handle small synthetic datasets
     if features.shape[1] > 50:
-        features = PCA(n_components=50, random_state=42).fit_transform(features)
+        n_pca = min(50, features.shape[0] - 1, features.shape[1])
+        if n_pca >= 2:
+            features = PCA(n_components=n_pca, random_state=42).fit_transform(features)
 
     saved_paths: list[Path] = []
     for perplexity in perplexities:

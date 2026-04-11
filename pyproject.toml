@@ -1,3 +1,6 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-x -q"
+markers = [
+    "slow: mark test as slow (>10s) -- integration tests that run full pipelines",
+]
