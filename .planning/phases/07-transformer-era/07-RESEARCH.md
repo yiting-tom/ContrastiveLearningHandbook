@@ -370,22 +370,25 @@ def main():
 | A3 | `vit_small_patch14_dinov2` short name resolves in timm to `vit_small_patch14_dinov2.lvd142m` | Pitfall 5 | Script may error; use full qualified name as fallback |
 | A4 | scikit-learn is available in the project environment for k-NN evaluation | Standard Stack | May need `pip install scikit-learn` |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Gradient clipping in TrainConfig?**
    - What we know: `Trainer(gradient_clip_val=...)` works, but current `TrainConfig` has no field for it. YAML configs cannot specify gradient clipping.
    - What's unclear: Should we add `gradient_clip_val: Optional[float] = None` to `TrainConfig` or handle it only at the Trainer level in test/training scripts?
    - Recommendation: Add the field to `TrainConfig` so YAML configs can specify it -- both MoCo v3 and DINO need it, and future methods may too. This is a small config schema extension.
+   - RESOLVED: Plan 07-01 Task 1 step 3 adds `gradient_clip_val: Optional[float] = None` to `TrainConfig` and wires it into `Trainer` instantiation.
 
 2. **InfoNCELoss in-batch-only mode**
    - What we know: Existing `InfoNCELoss` accepts an optional `queue` parameter. When `queue=None`, it operates on in-batch pairs.
    - What's unclear: Whether the existing InfoNCELoss correctly handles the symmetric in-batch case that MoCo v3 needs (query-key cross-correlation without self-pairs).
    - Recommendation: Verify the existing `InfoNCELoss(q, k, queue=None)` path works for MoCo v3. If not, a small adapter or mode parameter may be needed.
+   - RESOLVED: Plan 07-02 Task 1 uses `InfoNCELoss(temperature=cfg.moco_v3.temperature)` with `queue=None`; symmetric loss computed as `(loss(q, k) + loss(k, q)) / 2`.
 
 3. **DINOv2 demo timm model name resolution**
    - What we know: HuggingFace lists `vit_small_patch14_dinov2.lvd142m` as the full name.
    - What's unclear: Whether `timm.create_model('vit_small_patch14_dinov2', pretrained=True)` auto-resolves to the `.lvd142m` variant.
    - Recommendation: Use the full qualified name `vit_small_patch14_dinov2.lvd142m` in the demo script to be explicit.
+   - RESOLVED: Plan 07-04 Task 1 uses `timm.create_model('vit_small_patch14_dinov2.lvd142m', pretrained=True)` — full qualified name avoids any ambiguity.
 
 ## Validation Architecture
 
