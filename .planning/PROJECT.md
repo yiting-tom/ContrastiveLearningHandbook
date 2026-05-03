@@ -8,6 +8,17 @@ A tutorial repository implementing the full arc of contrastive and self-supervis
 
 Any contrastive learning method can be implemented by conforming to a shared interface and immediately work with the same dataset pipeline, timm backbone, and Lightning training loop — no boilerplate duplication.
 
+## Current Milestone: v1.1 Debt Payoff
+
+**Goal:** Close all known v1.0 gaps — train.py wiring, missing exports, dead code, and automated integration tests for training diagnostics.
+
+**Target features:**
+- Fix `train.py` wiring for InstanceDiscrimination, SwAV/DINO multi-crop, and SupCon stage-2
+- Add 4 missing exports to `core/__init__.py __all__`
+- Remove duplicate `InfoMinConfig` dead code from `config.py`
+- `@pytest.mark.slow` integration tests: BYOL embedding_std and Barlow Twins corr_diag_mean thresholds after 5 epochs on CIFAR-10
+- README Quickstart end-to-end verification
+
 ## Requirements
 
 ### Validated (v1.0)
@@ -79,5 +90,22 @@ Any contrastive learning method can be implemented by conforming to a shared int
 | LARS from scratch (~60 lines) | No lightly/torchlars dependency; tutorial-readable | ✓ Good — reduces dependency surface |
 | Phase 10.1 inserted post-audit | Closed critical eval-script integration blockers | ✓ Good — 13/13 e2e tests GREEN |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-05-03 after v1.0 milestone — 11 phases, 57 plans, 34/40 requirements fully satisfied. Next: /gsd-new-milestone for v1.1.*
+*Last updated: 2026-05-03 after v1.1 milestone start — debt-payoff scope, 5 known gaps targeted.*
