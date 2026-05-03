@@ -8,6 +8,13 @@ Usage:
 """
 from __future__ import annotations
 
+# B1 fix (phase 10.1): allow `python eval/umap_vis.py ...` from repo root
+# to find sibling `core` and `methods` packages without an editable install.
+# Reference: https://alex.dzyoba.com/blog/python-import/
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import argparse
 from pathlib import Path
 from typing import Optional

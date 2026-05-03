@@ -12,6 +12,13 @@ Usage:
 """
 from __future__ import annotations
 
+# B1 fix (phase 10.1): allow `python eval/tsne_vis.py ...` from repo root
+# to find sibling `core` and `methods` packages without an editable install.
+# Reference: https://alex.dzyoba.com/blog/python-import/
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import argparse
 from pathlib import Path
 from typing import Optional
@@ -121,11 +128,31 @@ def run_tsne(
         if n_pca >= 2:
             features = PCA(n_components=n_pca, random_state=42).fit_transform(features)
 
+    # B4 fix (phase 10.1): scikit-learn >= 1.2 enforces perplexity < n_samples
+    # strictly. Guard against pathological inputs and clamp per-perplexity below.
+    n = features.shape[0]
+    if n < 4:
+        raise ValueError(
+            f"t-SNE requires at least 4 samples; got {n}. "
+            "Increase n_samples or use a larger dataset."
+        )
+
     saved_paths: list[Path] = []
     for perplexity in perplexities:
+        # B4 fix (phase 10.1): clamp to n_samples - 1 to avoid sklearn ValueError
+        # on small datasets. The original requested perplexity is preserved in
+        # the output filename for backward compatibility; the actual run uses
+        # safe_perplexity. Reference:
+        # https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
+        safe_perplexity = min(perplexity, n - 1)
+        if safe_perplexity != perplexity:
+            print(
+                f"warn: requested perplexity={perplexity} >= n_samples={n}; "
+                f"clamping to {safe_perplexity}"
+            )
         embedding = TSNE(
             n_components=2,
-            perplexity=perplexity,
+            perplexity=safe_perplexity,
             init="pca",
             metric="cosine",
             learning_rate="auto",
