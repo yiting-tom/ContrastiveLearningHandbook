@@ -62,4 +62,4 @@ Any contrastive learning method can be implemented by conforming to a shared int
 | Fine granularity phases | Methods span multiple eras; each era/cluster deserves its own phase | — Pending |
 
 ---
-*Last updated: 2026-04-05 — Phase 03 complete: SimCLRv1Module + SimCLRv2Module implemented and verified*
+*Last updated: 2026-05-03 — Phase 10.1 complete: all train.py + eval script integration bugs fixed, 13/13 e2e tests GREEN. Milestone v1.0 fully complete.*
