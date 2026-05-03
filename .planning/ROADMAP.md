@@ -16,7 +16,7 @@ This roadmap builds the tutorial repository from shared infrastructure outward t
 - [ ] **Phase 8: Supervised Contrastive** - SupCon loss, class-balanced sampler, two-stage training
 - [ ] **Phase 9: Evaluation Suite** - k-NN callback, linear probe, t-SNE, UMAP, fine-tuning, and CAM visualization
 - [x] **Phase 10: Documentation and Tutorial** - README, per-method docstrings, walkthrough notebook (completed 2026-05-03)
-- [ ] **Phase 10.1: Fix train.py + eval script integration bugs** (INSERTED)
+- [x] **Phase 10.1: Fix train.py + eval script integration bugs** (INSERTED) (completed 2026-05-03)
 
 ## Phase Details
 
@@ -279,15 +279,15 @@ Plans:
 
 Plans:
 **Wave 1** *(test scaffolding — must land first per Nyquist contract)*
-- [ ] 10.1-01-PLAN.md — Add `tmp_imagefolder_with_val` fixture to `tests/conftest.py` + create `tests/test_e2e_pipeline.py` with 9 RED stubs (5 parametrized B1 + B2 static + 7 slow SC-* tests)
+- [x] 10.1-01-PLAN.md — Add `tmp_imagefolder_with_val` fixture to `tests/conftest.py` + create `tests/test_e2e_pipeline.py` with 9 RED stubs (5 parametrized B1 + B2 static + 7 slow SC-* tests)
 
 **Wave 2** *(parallel bug fixes — zero file overlap)*
-- [ ] 10.1-02-PLAN.md — `train.py` add `ModelCheckpoint(save_last=True, save_top_k=-1)` (B3) + README.md CIFAR-10 prep snippet writes `train/`+`val/` (B5 doc half)
-- [ ] 10.1-03-PLAN.md — `eval/linear_probe.py` + `eval/finetune.py`: B1 sys.path bootstrap + B2 explicit-kwarg `SSLDataModule` + B5 val-loader guard (linear_probe only)
-- [ ] 10.1-04-PLAN.md — `eval/tsne_vis.py` (B1 + B4 perplexity clamp) + `eval/umap_vis.py` (B1) + `eval/cam_vis.py` (B1) + verify `eval/dinov2_demo.py` exempt
+- [x] 10.1-02-PLAN.md — `train.py` add `ModelCheckpoint(save_last=True, save_top_k=-1)` (B3) + README.md CIFAR-10 prep snippet writes `train/`+`val/` (B5 doc half)
+- [x] 10.1-03-PLAN.md — `eval/linear_probe.py` + `eval/finetune.py`: B1 sys.path bootstrap + B2 explicit-kwarg `SSLDataModule` + B5 val-loader guard (linear_probe only)
+- [x] 10.1-04-PLAN.md — `eval/tsne_vis.py` (B1 + B4 perplexity clamp) + `eval/umap_vis.py` (B1) + `eval/cam_vis.py` (B1) + verify `eval/dinov2_demo.py` exempt
 
 **Wave 3** *(close the test loop)*
-- [ ] 10.1-05-PLAN.md — Fill in all 9 test bodies in `tests/test_e2e_pipeline.py` (replace RED `NotImplementedError` stubs with real subprocess-driven assertions for SC-1, SC-2a-e, SC-3, Reg-B1, Reg-B2)
+- [x] 10.1-05-PLAN.md — Fill in all 9 test bodies in `tests/test_e2e_pipeline.py` (replace RED `NotImplementedError` stubs with real subprocess-driven assertions for SC-1, SC-2a-e, SC-3, Reg-B1, Reg-B2)
 
 **UI hint**: no
 
@@ -309,4 +309,4 @@ Plans:
 | 8. Supervised Contrastive | 0/5 | Not started | - |
 | 9. Evaluation Suite | 0/5 | Not started | - |
 | 10. Documentation and Tutorial | 0/6 | Not started | - |
-| 10.1. Fix train.py + eval script integration bugs | 0/5 | Not started | - |
+| 10.1. Fix train.py + eval script integration bugs | 5/5 | Complete | 2026-05-03 |
