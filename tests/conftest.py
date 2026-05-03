@@ -45,6 +45,34 @@ def tmp_imagefolder(tmp_path):
 
 
 @pytest.fixture
+def tmp_imagefolder_with_val(tmp_path):
+    """Create a temporary ImageFolder with train/ and val/ splits.
+
+    Train: 3 classes, 5 images each (15 total), 32x32 RGB JPEGs.
+    Val:   3 classes, 2 images each (6 total),  32x32 RGB JPEGs.
+
+    Directory structure:
+        tmp_path/train/class_{0,1,2}/img_{00..04}.jpg
+        tmp_path/val/class_{0,1,2}/img_{00..01}.jpg
+
+    Returns:
+        tmp_path (Path): Root containing train/ and val/ subdirectories.
+    """
+    n_classes = 3
+    for split, n_images in [("train", 5), ("val", 2)]:
+        split_dir = tmp_path / split
+        split_dir.mkdir()
+        for cls_idx in range(n_classes):
+            cls_dir = split_dir / f"class_{cls_idx}"
+            cls_dir.mkdir()
+            for img_idx in range(n_images):
+                arr = np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)
+                img = Image.fromarray(arr)
+                img.save(cls_dir / f"img_{img_idx:02d}.jpg")
+    return tmp_path
+
+
+@pytest.fixture
 def toy_config_dict():
     """Return a minimal valid TrainConfig dict for testing."""
     return {
