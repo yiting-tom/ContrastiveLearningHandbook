@@ -14,6 +14,7 @@ for all 14 SSL methods at startup.
 from __future__ import annotations
 
 import argparse
+import sys
 
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -49,7 +50,23 @@ def main() -> None:
     if args.data_dir is not None:
         cfg = cfg.model_copy(update={"data_dir": args.data_dir})
 
-    model = method_dispatcher(cfg)
+    # WIRE-03 (D-05, D-06, D-07): SupCon stage-2 must load the stage-1 backbone.
+    # The default dispatcher for "supcon_finetune" would instantiate a random backbone.
+    # from_stage1_ckpt() loads backbone.* weights and freezes them before returning.
+    # ckpt_path must NOT be passed to trainer.fit() — that would resume Lightning
+    # training state (optimizer state, epoch count) from a stage-1 run, not just
+    # load the backbone.
+    if cfg.method == "supcon_finetune":
+        if args.ckpt_path is None:
+            print(
+                "Error: supcon_finetune requires --ckpt-path pointing to a stage-1 checkpoint",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        from methods.supcon.module import SupConFinetuneModule
+        model = SupConFinetuneModule.from_stage1_ckpt(args.ckpt_path, cfg)
+    else:
+        model = method_dispatcher(cfg)
     dm = SSLDataModule(
         data_dir=cfg.data_dir,
         n_views=cfg.n_views,
@@ -75,7 +92,11 @@ def main() -> None:
         gradient_clip_val=cfg.gradient_clip_val,
         callbacks=callbacks,
     )
-    trainer.fit(model, dm, ckpt_path=args.ckpt_path)
+    # D-07: Do not pass ckpt_path to trainer.fit() for supcon_finetune.
+    # from_stage1_ckpt() already loaded the backbone; passing ckpt_path here
+    # would incorrectly resume Lightning training state from the stage-1 run.
+    _fit_ckpt = None if cfg.method == "supcon_finetune" else args.ckpt_path
+    trainer.fit(model, dm, ckpt_path=_fit_ckpt)
 
 
 if __name__ == "__main__":
