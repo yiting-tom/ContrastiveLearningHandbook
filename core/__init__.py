@@ -19,7 +19,17 @@ except ImportError:
     pass
 
 try:
-    from core.data import ContrastiveAugmentation, MultiViewTransform, SSLDataModule
+    from core.data import (
+        ContrastiveAugmentation,
+        MultiCropDataset,
+        MultiViewTransform,
+        SSLDataModule,
+    )
+except ImportError:
+    pass
+
+try:
+    from core.dispatcher import method_dispatcher
 except ImportError:
     pass
 
@@ -29,7 +39,7 @@ except ImportError:
     pass
 
 try:
-    from core.losses import InfoNCELoss
+    from core.losses import InfoNCELoss, SupConLoss
 except ImportError:
     pass
 
@@ -49,7 +59,7 @@ except ImportError:
     pass
 
 try:
-    from core.projection import ProjectionHead
+    from core.projection import PredictorHead, ProjectionHead
 except ImportError:
     pass
 
@@ -60,12 +70,16 @@ __all__ = [
     "EvalConfig",
     "load_config",
     "ContrastiveAugmentation",
+    "MultiCropDataset",
     "MultiViewTransform",
     "SSLDataModule",
+    "method_dispatcher",
     "EMAUpdater",
     "InfoNCELoss",
+    "SupConLoss",
     "LARS",
     "MemoryBank",
     "MomentumQueue",
+    "PredictorHead",
     "ProjectionHead",
 ]
