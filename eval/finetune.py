@@ -89,9 +89,10 @@ class FinetuneModule(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         imgs, labels = batch[0], batch[1]
-        # Handle multi-view batches: [B, n_views, C, H, W] -> use first view
+        # Handle multi-view batches: SSLDataModule ssl_collate_fn produces
+        # shape [n_views, B, C, H, W]. Use first view: imgs[0] -> [B, C, H, W].
         if imgs.ndim == 5:
-            imgs = imgs[:, 0]
+            imgs = imgs[0]
         logits = self(imgs)
         loss = self.criterion(logits, labels)
         acc = (logits.argmax(dim=1) == labels).float().mean()
@@ -101,8 +102,10 @@ class FinetuneModule(L.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         imgs, labels = batch[0], batch[1]
+        # Handle multi-view batches: SSLDataModule ssl_collate_fn produces
+        # shape [n_views, B, C, H, W]. Use first view: imgs[0] -> [B, C, H, W].
         if imgs.ndim == 5:
-            imgs = imgs[:, 0]
+            imgs = imgs[0]
         logits = self(imgs)
         loss = self.criterion(logits, labels)
         acc = (logits.argmax(dim=1) == labels).float().mean()
