@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Debt Payoff
-status: planning
-stopped_at: ""
+status: in_progress
+stopped_at: "Phase 11"
 last_updated: "2026-05-03T00:00:00.000Z"
-last_activity: 2026-05-03 -- Milestone v1.1 started
+last_activity: 2026-05-03 -- Roadmap created, Phase 11 is next
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03 after v1.1 milestone start)
 
 **Core value:** Any contrastive learning method can be implemented by conforming to a shared interface and immediately work with the same dataset pipeline, timm backbone, and Lightning training loop.
-**Current focus:** v1.1 Debt Payoff — defining requirements
+**Current focus:** v1.1 Debt Payoff — Phase 11: Code Fix & Export Cleanup
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-05-03 — Milestone v1.1 started
+Phase: 11 — Code Fix & Export Cleanup
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-05-03 — Roadmap created (2 phases: 11, 12)
+
+```
+[Phase 11 ░░░░░░░░░░] [Phase 12 ░░░░░░░░░░]
+ 0% complete
+```
 
 ## Accumulated Context
 
@@ -43,6 +48,13 @@ Key architectural decisions from v1.0:
 - EigenCAM as SSL default (no classifier needed)
 - LARS from scratch — no lightly/torchlars dependency
 - Phase 10.1 inserted post-audit — closed critical eval-script blockers
+
+### v1.1 Phase Map
+
+| Phase | Goal | Requirements | Status |
+|-------|------|--------------|--------|
+| 11 | Close all code gaps (train.py wiring, exports, dead code) | WIRE-01, WIRE-02, WIRE-03, EXPORT-01, CLEAN-01 | Not started |
+| 12 | Automated slow integration tests for training diagnostics | TEST-01, TEST-02, TEST-03 | Not started |
 
 ### Blockers/Concerns
 

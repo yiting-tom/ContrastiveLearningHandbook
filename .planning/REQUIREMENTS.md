@@ -46,20 +46,20 @@ No items deferred from v1.1 — this is a closed debt-payoff scope.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WIRE-01 | — | Pending |
-| WIRE-02 | — | Pending |
-| WIRE-03 | — | Pending |
-| EXPORT-01 | — | Pending |
-| CLEAN-01 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
+| WIRE-01 | Phase 11 | Pending |
+| WIRE-02 | Phase 11 | Pending |
+| WIRE-03 | Phase 11 | Pending |
+| EXPORT-01 | Phase 11 | Pending |
+| CLEAN-01 | Phase 11 | Pending |
+| TEST-01 | Phase 12 | Pending |
+| TEST-02 | Phase 12 | Pending |
+| TEST-03 | Phase 12 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 8 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 8 ⚠️
+- Mapped to phases: 8 (100%) ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-03*
-*Last updated: 2026-05-03 after v1.1 milestone start*
+*Last updated: 2026-05-03 after v1.1 roadmap created (phases 11–12)*
