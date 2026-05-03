@@ -15,7 +15,7 @@ This roadmap builds the tutorial repository from shared infrastructure outward t
 - [ ] **Phase 7: Transformer Era** - MoCo v3, DINO, and DINOv2 feature-extraction tutorial
 - [ ] **Phase 8: Supervised Contrastive** - SupCon loss, class-balanced sampler, two-stage training
 - [ ] **Phase 9: Evaluation Suite** - k-NN callback, linear probe, t-SNE, UMAP, fine-tuning, and CAM visualization
-- [ ] **Phase 10: Documentation and Tutorial** - README, per-method docstrings, walkthrough notebook
+- [x] **Phase 10: Documentation and Tutorial** - README, per-method docstrings, walkthrough notebook (completed 2026-05-03)
 
 ## Phase Details
 
