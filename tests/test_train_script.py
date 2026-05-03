@@ -79,7 +79,12 @@ def test_train_py_runs_one_batch_on_toy_data(tmp_imagefolder, tmp_path, monkeypa
         kwargs["limit_train_batches"] = 1
         kwargs["accelerator"] = "cpu"
         kwargs["logger"] = False
-        kwargs["enable_checkpointing"] = False
+        # Do NOT set enable_checkpointing=False: train.py now passes a
+        # ModelCheckpoint callback (B3 fix), and Lightning raises
+        # MisconfigurationException when enable_checkpointing=False conflicts
+        # with an explicit ModelCheckpoint in the callbacks list.
+        # Use default_root_dir so checkpoints are isolated to tmp_path.
+        kwargs.setdefault("default_root_dir", str(tmp_path))
         kwargs["enable_progress_bar"] = False
         return original_init(self, *args, **kwargs)
 
@@ -105,3 +110,73 @@ def test_train_py_invalid_config_raises(tmp_path, monkeypatch):
 
     with pytest.raises((FileNotFoundError, OSError)):
         train.main()
+
+
+# ---------------------------------------------------------------------------
+# Regression-B3: train.py must configure ModelCheckpoint(save_last=True)
+# ---------------------------------------------------------------------------
+
+def test_train_py_imports_model_checkpoint():
+    """B3 regression: train.py must import ModelCheckpoint from lightning.pytorch.callbacks."""
+    source = TRAIN_PY.read_text()
+    assert "from lightning.pytorch.callbacks import ModelCheckpoint" in source, (
+        "train.py does not import ModelCheckpoint — `last.ckpt` will never be created"
+    )
+
+
+def test_train_py_has_save_last_checkpoint():
+    """B3 regression: train.py must construct ModelCheckpoint(save_last=True, save_top_k=-1)."""
+    source = TRAIN_PY.read_text()
+    assert "ModelCheckpoint(save_last=True, save_top_k=-1)" in source, (
+        "train.py does not pre-seed callbacks with ModelCheckpoint(save_last=True, save_top_k=-1)"
+    )
+
+
+def test_train_py_knn_callback_wiring_preserved():
+    """Regression: the KNNCallback wiring must remain after B3 fix."""
+    source = TRAIN_PY.read_text()
+    assert "from eval.knn_callback import KNNCallback" in source, (
+        "train.py lost the KNNCallback wiring — eval.knn integration is broken"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Regression-B5 doc: README CIFAR-10 prep snippet must create both train/+val/
+# ---------------------------------------------------------------------------
+
+README = REPO_ROOT / "README.md"
+
+
+def test_readme_cifar10_prep_creates_both_splits():
+    """B5 doc: README CIFAR-10 prep snippet must loop over train AND val splits."""
+    source = README.read_text()
+    assert 'for split, train_flag in [("train", True), ("val", False)]:' in source, (
+        "README CIFAR-10 prep snippet only creates train/ split — val/ split missing"
+    )
+
+
+def test_readme_cifar10_prep_uses_root_variable():
+    """B5 doc: README CIFAR-10 prep must use root = Path('data/cifar10_imagefolder')."""
+    source = README.read_text()
+    assert 'root = Path("data/cifar10_imagefolder")' in source, (
+        "README CIFAR-10 prep does not define root variable for two-split loop"
+    )
+
+
+def test_readme_cifar10_prep_does_not_hardcode_train_only():
+    """B5 doc: README must NOT have old hardcoded single-split path."""
+    source = README.read_text()
+    assert 'out = Path("data/cifar10_imagefolder/train")' not in source, (
+        "README still has old hardcoded single-split path — val/ split missing"
+    )
+
+
+def test_readme_explanatory_line_points_at_parent_dir():
+    """B5 doc: README explanatory line must point --data-dir at parent (not .../train)."""
+    source = README.read_text()
+    assert "--data-dir data/cifar10_imagefolder/train" not in source, (
+        "README still instructs users to pass --data-dir data/cifar10_imagefolder/train"
+    )
+    assert "auto-detects the" in source and "train/" in source and "val/" in source, (
+        "README explanatory text does not mention auto-detection of train/+val/ splits"
+    )

@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 
 import lightning as L
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 from core.config import load_config
 from core.data import SSLDataModule
@@ -56,7 +57,15 @@ def main() -> None:
         num_workers=cfg.num_workers,
     )
 
-    callbacks: list[L.Callback] = []
+    # Always save `last.ckpt` so that documented eval commands
+    # (e.g., `python eval/linear_probe.py ... --ckpt .../last.ckpt`) work
+    # without requiring users to discover the epoch=*-step=*.ckpt filename.
+    # save_top_k=-1 saves every epoch; pair with save_last=True for the
+    # stable `last.ckpt` alias. See:
+    # https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelCheckpoint.html
+    callbacks: list[L.Callback] = [
+        ModelCheckpoint(save_last=True, save_top_k=-1),
+    ]
     if cfg.eval is not None and cfg.eval.knn is not None:
         from eval.knn_callback import KNNCallback
         callbacks.append(KNNCallback(cfg.eval.knn))

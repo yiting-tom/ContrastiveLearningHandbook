@@ -58,17 +58,21 @@ from pathlib import Path
 from torchvision.datasets import CIFAR10
 from PIL import Image
 
-out = Path("data/cifar10_imagefolder/train")
-out.mkdir(parents=True, exist_ok=True)
-ds = CIFAR10(root="data/cifar10_raw", train=True, download=True)
-for i, (img, y) in enumerate(ds):
-    d = out / ds.classes[y]
-    d.mkdir(exist_ok=True)
-    img.save(d / f"{i:05d}.png")
+root = Path("data/cifar10_imagefolder")
+for split, train_flag in [("train", True), ("val", False)]:
+    out = root / split
+    out.mkdir(parents=True, exist_ok=True)
+    ds = CIFAR10(root="data/cifar10_raw", train=train_flag, download=True)
+    for i, (img, y) in enumerate(ds):
+        d = out / ds.classes[y]
+        d.mkdir(exist_ok=True)
+        img.save(d / f"{i:05d}.png")
 EOF
 ```
 
-Then point `--data-dir data/cifar10_imagefolder/train` at the result.
+Then point `--data-dir data/cifar10_imagefolder` at the result. `SSLDataModule`
+auto-detects the `train/` and `val/` subdirectories (see `core/data.py`); the
+`val/` split is required by `eval/linear_probe.py` and `eval/finetune.py`.
 
 ## Config System
 
