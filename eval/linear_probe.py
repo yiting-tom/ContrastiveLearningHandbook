@@ -11,6 +11,13 @@ Usage:
 """
 from __future__ import annotations
 
+# B1 fix (phase 10.1): allow `python eval/linear_probe.py ...` from repo root
+# to find sibling `core` and `methods` packages without an editable install.
+# Reference: https://alex.dzyoba.com/blog/python-import/
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import argparse
 from pathlib import Path
 
@@ -215,10 +222,18 @@ def main() -> None:
     # Resolve cache directory: sibling to checkpoints/ directory (D-04)
     cache_dir = Path(args.ckpt).parent.parent / "cache"
 
-    # Build dataloaders via SSLDataModule
+    # Build dataloaders via SSLDataModule using the same kwargs train.py uses.
+    # B2 fix (phase 10.1): the previous call `SSLDataModule(cfg)` passed the
+    # entire TrainConfig as data_dir, silently using default n_views/batch_size
+    # and crashing later in setup() with "expected str, bytes or os.PathLike object".
     from core.data import SSLDataModule
 
-    dm = SSLDataModule(cfg)
+    dm = SSLDataModule(
+        data_dir=cfg.data_dir,
+        n_views=cfg.n_views,
+        batch_size=cfg.batch_size,
+        num_workers=cfg.num_workers,
+    )
     dm.setup("fit")
 
     # Extract and cache features for train and val splits
@@ -230,9 +245,21 @@ def main() -> None:
         args.device,
         args.ckpt,
     )
+    # B5 fix (phase 10.1): linear probe requires a val/ split for evaluation.
+    # Without this guard, dm.val_dataloader() returns None when data_dir/val/
+    # is missing, and the next extract_and_cache() crashes with the unhelpful
+    # `'NoneType' object is not iterable` from inside the for-loop.
+    val_loader = dm.val_dataloader()
+    if val_loader is None:
+        raise FileNotFoundError(
+            f"Linear probe requires a 'val/' subdirectory under data_dir='{cfg.data_dir}'. "
+            f"Either add data_dir/val/ with the same class structure as train/, or "
+            f"reorganize your data to include a held-out split."
+        )
+
     val_feats, val_labels = extract_and_cache(
         model.backbone,
-        dm.val_dataloader(),
+        val_loader,
         cache_dir,
         "val",
         args.device,
