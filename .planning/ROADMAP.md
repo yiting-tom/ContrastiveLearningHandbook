@@ -47,8 +47,8 @@ Full phase details: `.planning/milestones/v1.0-ROADMAP.md`
 Plans:
 - [ ] 11-01-PLAN.md — WIRE-01: IndexedDataset wrap in train.py + SSLDataModule.train_dataloader() collate branch
 - [ ] 11-02-PLAN.md — WIRE-02: Shared swav/dino MultiCropDataset block in train.py (2×224 + 6×96)
-- [ ] 11-03-PLAN.md — WIRE-03: supcon_finetune routing via from_stage1_ckpt() + missing ckpt_path guard
-- [ ] 11-04-PLAN.md — EXPORT-01 + CLEAN-01: 4 new core/__init__.py exports + InfoMinConfig verification
+- [x] 11-03-PLAN.md — WIRE-03: supcon_finetune routing via from_stage1_ckpt() + missing ckpt_path guard — completed 2026-05-04
+- [x] 11-04-PLAN.md — EXPORT-01 + CLEAN-01: 4 new core/__init__.py exports + InfoMinConfig verification — completed 2026-05-04
 
 ### Phase 12: Integration Test Suite
 **Goal**: Automated slow tests assert that BYOL and Barlow Twins produce non-collapsed embeddings after real training, and that README Quickstart commands run without error
@@ -76,5 +76,5 @@ Plans:
 | 9. Evaluation Suite | v1.0 | 5/5 | Complete | — |
 | 10. Documentation and Tutorial | v1.0 | 6/6 | Complete | 2026-05-03 |
 | 10.1. Fix train.py + eval bugs (INSERTED) | v1.0 | 5/5 | Complete | 2026-05-03 |
-| 11. Code Fix & Export Cleanup | v1.1 | 0/4 | Not started | — |
+| 11. Code Fix & Export Cleanup | v1.1 | 2/4 | In Progress | — |
 | 12. Integration Test Suite | v1.1 | 0/? | Not started | — |
