@@ -44,23 +44,39 @@ from core.projection import ProjectionHead
 class BarlowTwinsModule(BaseSSLModule):
     """Barlow Twins (Zbontar et al., ICML 2021).
 
-    Redundancy-reduction self-supervised learning via cross-correlation matrix.
+    Barlow Twins: Self-Supervised Learning via Redundancy Reduction.
 
-    Architecture:
-    - Shared encoder: backbone -> projector (8192-dim output, 3 layers)
-    - Loss: drives cross-correlation matrix toward identity
+    Two augmented views are encoded by a shared backbone and a high-dimensional
+    projector (8192-dim output). The cross-correlation matrix C between the
+    projected representations of the two batches (normalized by batch size) is
+    driven toward the identity: diagonal terms invariance ((1-C_ii)^2) and
+    off-diagonal terms redundancy (lambda * C_ij^2). No negatives, no EMA, no
+    predictor — fully symmetric.
 
-    No predictor, no EMA, no queue, no negatives.
+    Paper: "Barlow Twins: Self-Supervised Learning via Redundancy Reduction"
+    Authors: Jure Zbontar, Li Jing, Ishan Misra, Yann LeCun, Stephane Deny
+    Venue: ICML 2021
+    arXiv: https://arxiv.org/abs/2103.03230
 
-    Collapse Monitoring:
-        - ``train/corr_diag_mean``: mean of the diagonal of the cross-correlation
-          matrix C. Computed as ``torch.diagonal(C).mean()`` under
-          ``torch.no_grad()``. Collapse is indicated when this value drops below
-          0.5 — the two views' representations are no longer correlated. Healthy
-          training: > 0.8. Poor invariance: < 0.5.
+    Algorithm:
+    1. Augment x into v1, v2; encode both with shared backbone.
+    2. Project to 8192-dim via 3-layer MLP (BN+ReLU on layers 1-2, BN-only on 3).
+    3. Standardize (zero mean, unit variance) projector outputs across batch.
+    4. Compute cross-correlation C = Z1.T @ Z2 / N.
+    5. Loss = sum_i (1 - C_ii)^2 + lambda * sum_{i!=j} C_ij^2 (lambda=5e-3).
 
-    Args:
-        cfg: TrainConfig with cfg.barlow_twins populated.
+    Gotchas:
+    - C must be normalized by batch size (divide by N) before computing the loss.
+      Without this, the loss scale depends on batch size in a non-obvious way.
+    - Projector output must be standardized (zero mean, unit variance per
+      dimension across the batch) before computing C. BN at the projector output
+      handles standardization but it must happen at loss-computation time too.
+    - lambda is sensitive — values much above 5e-3 push C off-diagonals to zero
+      but starve the diagonal; values much below leave redundancy uncontrolled.
+    - Do not reduce projector output dim below 2048 without empirical validation.
+    - Mandatory training diagnostic: log z.std(dim=0).mean(); collapse signal.
+
+    Reference implementation: https://github.com/facebookresearch/barlowtwins
     """
 
     def __init__(self, cfg: TrainConfig) -> None:

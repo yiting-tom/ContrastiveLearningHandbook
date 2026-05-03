@@ -40,24 +40,37 @@ from core.projection import PredictorHead, ProjectionHead
 class SimSiamModule(BaseSSLModule):
     """SimSiam (Chen & He, CVPR 2021).
 
-    Simple Siamese representation learning — no negatives, no momentum.
+    Exploring Simple Siamese Representation Learning.
 
-    Architecture:
-    - Shared encoder: backbone -> projector (same weights for both views)
-    - Predictor: bottleneck MLP on both branches
+    SimSiam is BYOL without the EMA target — a single shared encoder produces
+    both views, and the only thing preventing collapse is the predictor MLP
+    plus a stop-gradient on the projector output. The symmetric negative-cosine
+    loss `-(cos_sim(p1, z2.detach()) + cos_sim(p2, z1.detach())) / 2` is
+    computed on L2-normalized vectors.
 
-    Loss: -(cosim(p1, z2.detach()) + cosim(p2, z1.detach())) / 2
-    The .detach() on z is the stop-gradient that prevents collapse.
+    Paper: "Exploring Simple Siamese Representation Learning"
+    Authors: Xinlei Chen, Kaiming He
+    Venue: CVPR 2021
+    arXiv: https://arxiv.org/abs/2011.10566
 
-    Collapse Monitoring:
-        - ``train/embedding_std``: std of projector embeddings across the batch
-          feature dimension. Computed as ``z1.std(dim=0).mean()`` under
-          ``torch.no_grad()``. Collapse is indicated when this value approaches
-          0.0 — all embeddings have converged to the same point in representation
-          space. Healthy training: > 0.1. Collapse: < 0.01.
+    Algorithm:
+    1. Augment x into v1, v2; encode both with the shared backbone.
+    2. Project: z1 = projector(h1); z2 = projector(h2). 3-layer projector with
+       BN on all layers including the output (no ReLU on output).
+    3. Predict: p1 = predictor(z1); p2 = predictor(z2). Bottleneck 2-layer MLP
+       (2048 -> 512 -> 2048).
+    4. Loss = -(cos_sim(p1, z2.detach()) + cos_sim(p2, z1.detach())) / 2.
 
-    Args:
-        cfg: TrainConfig with cfg.simsiam populated.
+    Gotchas:
+    - Forgetting `.detach()` causes immediate collapse to loss = -1.0 plateau —
+      this is the single most common SimSiam implementation bug.
+    - The final projector layer has BN but NO ReLU. Adding ReLU here measurably
+      hurts performance.
+    - Use SGD (NOT LARS); paper uses lr = 0.05 * batch_size / 256.
+    - Mandatory training diagnostic: log z.std(dim=0).mean(); should stay near
+      0.707. Approaching 0 indicates collapse.
+
+    Reference implementation: https://github.com/facebookresearch/simsiam
     """
 
     def __init__(self, cfg: TrainConfig) -> None:

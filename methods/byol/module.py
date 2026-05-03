@@ -44,25 +44,44 @@ from core.projection import PredictorHead, ProjectionHead
 class BYOLModule(BaseSSLModule):
     """BYOL (Grill et al., NeurIPS 2020).
 
-    Bootstrap Your Own Latent — no-negative self-supervised learning.
+    Bootstrap Your Own Latent — A New Approach to Self-Supervised Learning.
 
-    Architecture:
-    - Online network: backbone -> projector -> predictor
-    - Target network: backbone_ema -> projector_ema (NO predictor)
+    Two networks (online and target) process two augmented views of an image.
+    The online network has an extra predictor MLP on top of the projector; the
+    target network is an EMA copy with no predictor. The MSE loss between the
+    L2-normalized online prediction and L2-normalized target projection
+    (equivalent to 2 - 2*cos_sim), combined with the predictor asymmetry and
+    EMA target, prevents representational collapse without any negatives.
 
-    The MSE loss (2 - 2*cosine_similarity) between online predictions and
-    target projections, combined with EMA updates and the predictor asymmetry,
-    prevents representational collapse without negatives.
+    Paper: "Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning"
+    Authors: Jean-Bastien Grill, Florian Strub, Florent Altche, Corentin Tallec,
+             Pierre H. Richemond, Elena Buchatskaya, Carl Doersch,
+             Bernardo Avila Pires, Zhaohan Daniel Guo, Mohammad Gheshlaghi Azar,
+             Bilal Piot, Koray Kavukcuoglu, Remi Munos, Michal Valko
+    Venue: NeurIPS 2020
+    arXiv: https://arxiv.org/abs/2006.07733
 
-    Collapse Monitoring:
-        - ``train/embedding_std``: std of online projector embeddings across the
-          batch feature dimension. Computed as ``z1.std(dim=0).mean()`` under
-          ``torch.no_grad()``. Collapse is indicated when this value approaches
-          0.0 — all embeddings have converged to the same point in representation
-          space. Healthy training: > 0.1. Collapse: < 0.01.
+    Algorithm:
+    1. Augment image x into views v1, v2.
+    2. Online: y1 = backbone(v1); z1 = projector(y1); p1 = predictor(z1).
+    3. Target: y2' = backbone_ema(v2); z2' = projector_ema(y2').
+    4. Loss = ||normalize(p1) - normalize(z2'.detach())||^2 (and the symmetric pair).
+    5. Update online via gradient; update target via cosine-scheduled EMA (0.996 -> 1.0).
 
-    Args:
-        cfg: TrainConfig with cfg.byol populated.
+    Gotchas:
+    - The predictor is on the ONLINE branch only. The target branch has no
+      predictor — adding one breaks the asymmetry that prevents collapse.
+    - EMA momentum must be cosine-scheduled (0.996 -> 1.0), not constant.
+      Constant momentum (e.g., m=0.99) leads to suboptimal representations.
+    - Target branch parameters must have requires_grad=False and be excluded
+      from the optimizer via the `learnable_params` property. Including them
+      silently wastes compute and corrupts training.
+    - L2-normalize projector outputs BEFORE the loss (and the predictor input
+      internally also L2-normalizes its target).
+    - EMA update must run in `on_train_batch_end`, never `training_step` or
+      `on_before_optimizer_step`.
+
+    Reference implementation: https://github.com/deepmind/deepmind-research/tree/master/byol
     """
 
     def __init__(self, cfg: TrainConfig) -> None:

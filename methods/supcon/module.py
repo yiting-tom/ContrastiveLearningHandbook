@@ -42,32 +42,41 @@ from core.projection import ProjectionHead
 
 
 class SupConModule(BaseSSLModule):
-    """SupCon stage-1 pretraining module (Khosla et al., NeurIPS 2020).
+    """SupCon (Khosla et al., NeurIPS 2020).
 
-    Encodes two augmented views through a shared backbone and 2-layer MLP
-    projection head. The SupCon loss treats every in-batch image with the
-    same class label as a positive for each anchor, not just the other
-    augmented view. Use ClassBalancedSampler (via sampler_type='class_balanced'
-    in SSLDataModule) to ensure >= n_samples_per_class instances per class
-    appear in each batch — without this, many classes will be singletons and
-    the supervised term degrades to SimCLR.
+    Supervised Contrastive Learning.
 
-    NO classifier head is used during stage 1. Adding cross-entropy here
-    collapses the contrastive representation (warned against in the paper).
+    Stage-1 pretraining: encodes two augmented views through a shared backbone
+    and 2-layer MLP projection head. Unlike SimCLR, the SupCon loss treats
+    every in-batch image with the same class label as a positive for each
+    anchor (not just the other augmented view). Generalizes to SimCLR when
+    labels are absent (degenerate case with one positive per anchor).
+
+    Paper: "Supervised Contrastive Learning"
+    Authors: Prannay Khosla, Piotr Teterwak, Chen Wang, Aaron Sarna,
+             Yonglong Tian, Phillip Isola, Aaron Maschinot, Ce Liu, Dilip Krishnan
+    Venue: NeurIPS 2020
+    arXiv: https://arxiv.org/abs/2004.11362
 
     Algorithm:
-    1. Sample batch with ClassBalancedSampler.
-    2. Encode both views: h_i = backbone(x_i), h_j = backbone(x_j).
-    3. Project: z_i = projector(h_i), z_j = projector(h_j).
-    4. SupConLoss(z_i, z_j, labels) — sum-outside formulation (Eq. 2).
+    1. ClassBalancedSampler builds batches with >=2 instances per class.
+    2. Augment each image into 2 views; encode + project both via shared head.
+    3. Compute SupConLoss with sum-outside formulation (Eq. 2 of paper):
+       loss_i = -1/|P(i)| * sum_{p in P(i)} [s_{ip}/tau - log sum_{a!=i} exp(s_{ia}/tau)]
+       where P(i) is the set of all in-batch images with the same label as i.
 
     Gotchas:
-    - Do NOT add a classifier here — it will collapse the representation.
-    - ClassBalancedSampler is required; without it, singleton classes
-      in batches have no positives and the supervised term is zero.
-    - projection_dim=128 (not the backbone feature dim) is the target for
-      downstream evaluation comparisons with SimCLR.
-    - SupConLoss normalizes features internally; do not pre-normalize.
+    - Do NOT add a classifier during stage-1 pretraining. Adding cross-entropy
+      alongside the SupCon loss collapses the contrastive representation.
+    - ClassBalancedSampler is REQUIRED. Without >=2 instances per class per batch,
+      singleton classes have no positives and SupCon degenerates to SimCLR.
+    - Use the sum-outside formulation (Eq. 2), not sum-inside. Sum-inside is
+      a recurring implementation bug that gives different gradients.
+    - Features are L2-normalized internally by SupConLoss; do not pre-normalize.
+    - This is stage 1 only. Use SupConFinetuneModule (configs/supcon_stage2_*.yaml)
+      for stage-2 linear classifier training.
+
+    Reference implementation: https://github.com/HobbitLong/SupContrast
     """
 
     def __init__(self, cfg: TrainConfig) -> None:
@@ -145,35 +154,39 @@ class SupConModule(BaseSSLModule):
 
 
 class SupConFinetuneModule(BaseSSLModule):
-    """SupCon stage-2: frozen backbone + linear head trained with SGD.
+    """SupCon stage-2 fine-tuning (Khosla et al., NeurIPS 2020).
 
-    Loads a stage-1 SupConModule checkpoint, freezes the backbone, and
-    trains a single linear layer with cross-entropy and SGD (weight_decay=0.0).
-    The projector weights from stage 1 are discarded — the classifier takes
-    the backbone's raw feature vector h (not the projection z).
+    Supervised Contrastive Learning — linear classifier on frozen backbone.
 
-    Two-stage workflow:
-        Stage 1 (pretraining):
-            python train.py --config configs/supcon_stage1_resnet18.yaml
+    Loads the stage-1 SupCon checkpoint, freezes the backbone (requires_grad=False
+    and BN layers in eval mode), and trains a linear classifier on top with SGD
+    and weight_decay=0.0. The frozen backbone keeps the contrastive
+    representation intact while the linear head learns the class boundary.
 
-        Stage 2 (fine-tuning — this module):
-            python train.py --config configs/supcon_stage2_resnet18.yaml \\
-                --ckpt_path logs/supcon/version_0/checkpoints/last.ckpt
+    Paper: "Supervised Contrastive Learning"
+    Authors: Prannay Khosla, Piotr Teterwak, Chen Wang, Aaron Sarna,
+             Yonglong Tian, Phillip Isola, Aaron Maschinot, Ce Liu, Dilip Krishnan
+    Venue: NeurIPS 2020
+    arXiv: https://arxiv.org/abs/2004.11362
 
-    Loading stage-1 backbone into stage-2 module:
-        module = SupConFinetuneModule(cfg)
-        state = torch.load(ckpt_path, map_location='cpu')['state_dict']
-        # Keep only backbone.* keys; projector.* are discarded
-        backbone_state = {k: v for k, v in state.items() if k.startswith('backbone.')}
-        module.load_state_dict(backbone_state, strict=False)
-        module.freeze_backbone()
+    Algorithm:
+    1. Load stage-1 SupCon checkpoint via cfg.ckpt_path or --ckpt-path CLI flag.
+    2. Freeze backbone: requires_grad=False on all backbone params; BN -> eval().
+    3. Build a linear head (nn.Linear(feat_dim, num_classes)).
+    4. Train with SGD (lr ~ 0.1, momentum 0.9, weight_decay=0.0).
+    5. Use one augmented view per image (no contrastive views needed).
 
     Gotchas:
-    - SGD with weight_decay=0.0 is correct for linear probe. Do NOT use LARS
-      or AdamW with nonzero weight decay — it regularizes away signal.
-    - The backbone must be frozen AFTER loading the checkpoint, not before.
-    - Use only one view during fine-tuning (no multi-view needed for CE loss).
-    - BN layers in the backbone remain in eval() mode (set by freeze_backbone).
+    - Use SGD with weight_decay=0.0. Any nonzero weight decay regularizes the
+      linear head away from the signal and measurably suppresses accuracy.
+    - Freeze backbone AFTER loading the stage-1 checkpoint, not before. Freezing
+      before load_state_dict can interfere with checkpoint key matching.
+    - BN layers in the frozen backbone MUST remain in eval() mode through
+      training. The freeze hook must explicitly call backbone.eval() each step.
+    - Use only one view (views[0]) during stage-2; multi-view contrastive is
+      irrelevant to linear classifier training.
+
+    Reference implementation: https://github.com/HobbitLong/SupContrast
     """
 
     def __init__(self, cfg: TrainConfig) -> None:

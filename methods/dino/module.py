@@ -48,23 +48,45 @@ from core.projection import ProjectionHead
 
 
 class DINOModule(BaseSSLModule):
-    """DINO: Self-distillation with student-teacher networks and centering (Caron et al., ICCV 2021).
+    """DINO (Caron et al., ICCV 2021).
 
-    Architecture:
-    - Student (online) network: backbone -> projector (3-layer MLP, 256-dim) -> prototype_layer (256->65536)
-    - Teacher (EMA) network: backbone_ema -> projector_ema -> prototype_layer_ema (same dims, no grad)
+    Emerging Properties in Self-Supervised Vision Transformers.
 
-    Collapse prevention:
-    - Centering: teacher logits are shifted by a momentum-updated batch mean (``center`` buffer).
-    - Sharpening: teacher uses low temperature (0.04) for sharper softmax distributions.
-    - EMA: teacher slowly tracks student; avoids trivial constant collapse.
+    Self-distillation with a student-teacher framework where both networks share
+    the same ViT architecture. The teacher is an EMA copy of the student and
+    receives only global crops; the student receives all crops (global + local).
+    Loss is cross-entropy between student and teacher softmax outputs over a
+    large prototype layer (65,536-dim). Collapse is prevented by centering
+    (running mean subtracted from the teacher output) plus sharpening (low
+    teacher temperature).
 
-    Multi-crop:
-    - Teacher forward: first ``n_global`` crops only (default 2).
-    - Student forward: all crops (global + local).
+    Paper: "Emerging Properties in Self-Supervised Vision Transformers"
+    Authors: Mathilde Caron, Hugo Touvron, Ishan Misra, Herve Jegou,
+             Julien Mairal, Piotr Bojanowski, Armand Joulin
+    Venue: ICCV 2021
+    arXiv: https://arxiv.org/abs/2104.14294
 
-    Args:
-        cfg: TrainConfig with cfg.dino populated (or default DINOConfig).
+    Algorithm:
+    1. Multi-crop: 2 global (224x224) + 6-10 local (96x96) crops per image.
+    2. Student processes all crops; teacher processes only global crops.
+    3. Student/teacher each compute softmax over a 65536-dim prototype layer.
+    4. Centering: teacher output - running_center (updated each step from teacher).
+    5. Sharpening: teacher uses low temperature (warmup 0.04 -> 0.07).
+    6. Loss = sum over all (student crop, teacher global crop) pairs of
+       cross-entropy(student_softmax, teacher_softmax_centered_sharpened).
+
+    Gotchas:
+    - The centering vector must be updated with teacher outputs BEFORE computing
+      the loss. Updating after the loss leaks one step of stale center.
+    - Teacher temperature MUST warm up (0.04 -> 0.07). Starting at 0.07
+      immediately produces early instability.
+    - Local crops MUST NOT be passed to the teacher — teacher receives global
+      crops only. Passing local crops to teacher changes the objective semantics.
+    - Gradient clipping (max_norm=3.0) is required for stable ViT training.
+    - 65,536-dim prototype layer is important — reducing it measurably degrades
+      quality on ImageNet.
+
+    Reference implementation: https://github.com/facebookresearch/dino
     """
 
     def __init__(self, cfg: TrainConfig) -> None:
