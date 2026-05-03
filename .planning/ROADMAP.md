@@ -228,11 +228,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — KNNCallback (Lightning Callback) with FAISS/brute-force k-NN, temperature-scaled weighted voting, epoch scheduling, eval dependencies installation
-- [ ] 09-02-PLAN.md — LinearProbeModule + eval/linear_probe.py with frozen backbone, SGD weight_decay=0.0, MultiStepLR, feature caching to disk
-- [ ] 09-03-PLAN.md — eval/tsne_vis.py (PCA + t-SNE perplexity sweep) and eval/umap_vis.py (cosine UMAP with torchdr suggestion)
-- [ ] 09-04-PLAN.md — eval/finetune.py (FinetuneModule with dual LR groups, freeze_bn) and eval/cam_vis.py (EigenCAM/GradCAM with architecture-aware target layers)
-- [ ] 09-05-PLAN.md — Integration test: synthetic checkpoint + synthetic ImageFolder, full eval pipeline smoke test
+- [x] 09-01-PLAN.md — KNNCallback (Lightning Callback) with FAISS/brute-force k-NN, temperature-scaled weighted voting, epoch scheduling, eval dependencies installation
+- [x] 09-02-PLAN.md — LinearProbeModule + eval/linear_probe.py with frozen backbone, SGD weight_decay=0.0, MultiStepLR, feature caching to disk
+- [x] 09-03-PLAN.md — eval/tsne_vis.py (PCA + t-SNE perplexity sweep) and eval/umap_vis.py (cosine UMAP with torchdr suggestion)
+- [x] 09-04-PLAN.md — eval/finetune.py (FinetuneModule with dual LR groups, freeze_bn) and eval/cam_vis.py (EigenCAM/GradCAM with architecture-aware target layers)
+- [x] 09-05-PLAN.md — Integration test: synthetic checkpoint + synthetic ImageFolder, full eval pipeline smoke test
 
 **UI hint**: no
 
@@ -252,12 +252,17 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 10-01: Write `README.md` — project overview, installation section, quickstart (train SimCLR in one command, run k-NN evaluation), config system explanation, method table (all 14 v1 methods with era/venue/contribution), evaluation instructions, link to tutorial notebook
-- [ ] 10-02: Audit and complete DOC-02 docstrings for all Phase 2-8 modules — verify each has paper title, authors, venue, year, arXiv/DOI, 2-sentence description, gotcha list, reference implementation URL; fill gaps
-- [ ] 10-03: Write tutorial section (a): "How to add a new method" — step-by-step guide showing subclassing `BaseSSLModule`, implementing `training_step` and `build_projector`, registering in `method_dispatcher`, and writing a YAML config
-- [ ] 10-04: Write tutorial section (b): "Running an experiment end-to-end" — annotated walkthrough of config -> `python train.py --config configs/simclr_resnet50.yaml` -> checkpoint -> `python eval/linear_probe.py --ckpt ...` -> result; include expected output values on CIFAR-10
-- [ ] 10-05: Write tutorial section (c): "Comparing two methods" — demonstrates loading two checkpoints, running the evaluation suite on both, and producing a comparison table of k-NN accuracy, linear probe accuracy, and t-SNE plots side by side
-- [ ] 10-06: Assemble `notebooks/walkthrough.ipynb` or `docs/tutorial.md` from sections (a)+(b)+(c); add era-by-era narrative explaining what changed conceptually between proxy tasks, in-batch contrastive, queue-based, no-negative, and transformer-era methods; final review pass for broken links and missing configs
+**Wave 1**
+- [ ] 10-01-PLAN.md — Create train.py + tests/test_train_script.py + README.md (DOC-01 — overview, install, quickstart, method table for all 14 v1 methods, eval CLI)
+- [ ] 10-02-PLAN.md — Audit and complete DOC-02 class docstrings for all 8 non-compliant LightningModule subclasses + create tests/test_docstrings.py (DOC-02 enforcement)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 10-03-PLAN.md — Tutorial section (a): How to Add a New Method (DOC-03 — subclass BaseSSLModule, register in dispatcher, write YAML, run train.py)
+- [ ] 10-04-PLAN.md — Tutorial section (b): Running an Experiment End-to-End (DOC-03 — config -> train.py -> checkpoint -> eval/linear_probe.py + UMAP + k-NN)
+- [ ] 10-05-PLAN.md — Tutorial section (c): Comparing Two Methods (DOC-03 — run eval suite on two checkpoints, build comparison table)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 10-06-PLAN.md — Assemble docs/tutorial.md (era narrative + sections a+b+c) + final review pass verifying every config/module/CLI reference resolves
 
 **UI hint**: no
 
