@@ -198,7 +198,8 @@ def main() -> None:
     from core.dispatcher import get_method
     import methods  # noqa: F401 -- triggers register_method() calls
 
-    cfg = TrainConfig.model_validate(yaml.safe_load(open(args.config)))
+    with open(args.config) as f:
+        cfg = TrainConfig.model_validate(yaml.safe_load(f))
     umap_cfg: UMAPConfig = (
         cfg.eval.umap if cfg.eval and cfg.eval.umap else UMAPConfig()
     )
@@ -227,7 +228,11 @@ def main() -> None:
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    dataset = ImageFolder(root=cfg.data_dir, transform=transform)
+    # Auto-detect train/ subdir so data_dir can point to the train+val parent (matches SSLDataModule)
+    data_root = Path(cfg.data_dir)
+    if (data_root / "train").is_dir():
+        data_root = data_root / "train"
+    dataset = ImageFolder(root=str(data_root), transform=transform)
     loader = DataLoader(dataset, batch_size=256, shuffle=True, num_workers=4)
 
     print(f"Extracting up to {umap_cfg.n_samples} features ...")

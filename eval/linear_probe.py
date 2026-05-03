@@ -79,9 +79,9 @@ def extract_and_cache(
     with torch.no_grad():
         for batch in dataloader:
             imgs, lbls = batch[0], batch[1]
-            # Handle SSL multi-view batches: batch[0] has shape [B, n_views, C, H, W]
+            # Handle SSL multi-view batches: ssl_collate_fn produces [n_views, B, C, H, W]
             if isinstance(imgs, torch.Tensor) and imgs.ndim == 5:
-                imgs = imgs[:, 0]  # take the first view only
+                imgs = imgs[0]  # take the first view: shape [B, C, H, W]
             feats = backbone(imgs.to(device))
             all_features.append(feats.cpu())
             all_labels.append(lbls.cpu())
