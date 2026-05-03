@@ -45,7 +45,42 @@ from methods.swav.prototype import PrototypeLayer
 
 
 class SwAVModule(BaseSSLModule):
-    """SwAV module (see module-level docstring for full DOC-02 documentation)."""
+    """SwAV (Caron et al., NeurIPS 2020).
+
+    Unsupervised Learning of Visual Features by Contrasting Cluster Assignments.
+
+    Online clustering replaces in-batch contrastive negatives with assignments
+    to a learnable codebook of K prototype vectors. The swapped-prediction loss
+    forces the assignment for one augmented view to be predictable from the
+    features of another view, while Sinkhorn-Knopp optimal transport enforces
+    equal prototype usage across the batch.
+
+    Paper: "Unsupervised Learning of Visual Features by Contrasting Cluster Assignments"
+    Authors: Mathilde Caron, Ishan Misra, Julien Mairal, Priya Goyal,
+             Piotr Bojanowski, Armand Joulin
+    Venue: NeurIPS 2020
+    arXiv: https://arxiv.org/abs/2006.09882
+
+    Algorithm:
+    1. Multi-crop: produce 2 large (224x224) + N small (96x96) crops per image.
+    2. Encode all crops through shared backbone + 2-layer projector; L2-normalize.
+    3. Compute prototype scores (normalized features @ prototype matrix).
+    4. For each large crop, compute soft assignment codes via Sinkhorn-Knopp OT.
+    5. Swapped prediction: all other crops predict each large crop's codes.
+    6. Loss is cross-entropy between predictions and codes, averaged over pairs.
+
+    Gotchas:
+    - Prototypes must be frozen for the first `freeze_prototypes_epochs` epochs
+      (default: 1). Training without this causes unstable cluster assignments.
+    - Prototype vectors must be L2-normalized after every optimizer step. Without
+      this, score magnitudes grow unboundedly and Sinkhorn-Knopp overflows.
+    - Sinkhorn-Knopp code matrix must be doubly stochastic — each prototype
+      gets equal assignment mass. Use epsilon=0.05 (or 0.03 if unstable).
+    - Memory usage with 8 crops is ~4x SimCLR. Reduce batch_size to 1/4 of
+      SimCLR batch size (e.g., 64 vs 256 for ResNet-18).
+
+    Reference implementation: https://github.com/facebookresearch/swav
+    """
 
     def __init__(self, cfg: TrainConfig) -> None:
         super().__init__(cfg)

@@ -41,17 +41,38 @@ from methods.simclr.module import SimCLRv1Module
 
 
 class InfoMinModule(SimCLRv1Module):
-    """InfoMin augmentation-policy demonstration.
+    """InfoMin (Tian et al., NeurIPS 2020).
 
-    Subclasses SimCLRv1Module and overrides augmentation to use:
-    - Aggressive color jitter (s=1.5 vs SimCLR's s=1.0)
-    - Higher random grayscale probability (p=0.4 vs SimCLR's p=0.2)
-    - NO Gaussian blur (removed entirely -- key InfoMin change)
+    What Makes for Good Views for Contrastive Learning?
 
-    The InfoMin principle: "good views are those that share task-relevant
-    information but minimize mutual information beyond that." More aggressive
-    augmentation strips away low-level texture correlations that are easy to
-    learn but not task-relevant.
+    InfoMin is presented here as an augmentation-policy demonstration on top of
+    the SimCLR/MoCo v2 backbone. The principle: views should share minimal
+    mutual information except for task-relevant content. The implementation
+    substitutes aggressive color jitter + random grayscale (and removes Gaussian
+    blur) into the standard contrastive pipeline to approximate the "minimal-MI"
+    recipe without the full semi-supervised view-learning framework.
+
+    Paper: "What Makes for Good Views for Contrastive Learning?"
+    Authors: Yonglong Tian, Chen Sun, Ben Poole, Dilip Krishnan,
+             Cordelia Schmid, Phillip Isola
+    Venue: NeurIPS 2020
+    arXiv: https://arxiv.org/abs/2005.10243
+
+    Algorithm:
+    1. Wrap a SimCLR-style backbone with the "InfoMin" augmentation policy
+       (aggressive color jitter, random grayscale p=0.5, no Gaussian blur).
+    2. Encode two augmented views and project via 2-layer MLP head.
+    3. Compute symmetric NT-Xent loss as in SimCLR.
+
+    Gotchas:
+    - This module is the augmentation-policy demonstration only; the full
+      semi-supervised view-learning framework is v2 scope (see V2-06).
+    - Without the aggressive color jitter, the InfoMin recipe collapses to
+      ordinary SimCLR — verify augmentation strength via tools/compare_augmentations.py.
+    - Performance is sensitive to dataset domain — the default policy is tuned
+      for natural images; medical/industrial domains may need different views.
+
+    Reference implementation: https://github.com/HobbitLong/PyContrast
     """
 
     def __init__(self, cfg: TrainConfig) -> None:

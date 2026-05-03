@@ -1,0 +1,107 @@
+"""Smoke tests for train.py — the single-entry SSL training CLI.
+
+These tests verify that train.py:
+1. Exposes --config / --data-dir / --ckpt-path via argparse and prints help.
+2. Loads a real YAML config, dispatches a method, builds the data module,
+   and runs at least one training step on a toy ImageFolder fixture.
+3. Surfaces config errors (ValidationError, FileNotFoundError) rather than
+   silently failing.
+"""
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+import yaml
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+TRAIN_PY = REPO_ROOT / "train.py"
+
+
+# ---------------------------------------------------------------------------
+# CLI surface tests
+# ---------------------------------------------------------------------------
+
+def test_train_py_help_exits_zero():
+    """`python train.py --help` exits 0 and lists all three flags."""
+    result = subprocess.run(
+        [sys.executable, str(TRAIN_PY), "--help"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, f"--help exited {result.returncode}: {result.stderr}"
+    assert "--config" in result.stdout
+    assert "--data-dir" in result.stdout
+    assert "--ckpt-path" in result.stdout
+
+
+def test_train_py_missing_config_fails():
+    """Without --config, argparse exits non-zero."""
+    result = subprocess.run(
+        [sys.executable, str(TRAIN_PY)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode != 0
+
+
+# ---------------------------------------------------------------------------
+# End-to-end smoke: 1 epoch, 1 batch, toy ImageFolder
+# ---------------------------------------------------------------------------
+
+def test_train_py_runs_one_batch_on_toy_data(tmp_imagefolder, tmp_path, monkeypatch):
+    """train.py runs end-to-end: load_config -> dispatcher -> SSLDataModule -> 1 step."""
+    # Build a tiny override config from the canonical simclr_v1 quickstart
+    src = REPO_ROOT / "configs" / "simclr_v1_resnet18.yaml"
+    with open(src) as fh:
+        raw = yaml.safe_load(fh)
+    raw["max_epochs"] = 1
+    raw["batch_size"] = 4
+    raw["num_workers"] = 0
+    raw["data_dir"] = str(tmp_imagefolder)
+
+    cfg_path = tmp_path / "smoke.yaml"
+    with open(cfg_path, "w") as fh:
+        yaml.safe_dump(raw, fh)
+
+    # Patch sys.argv and call main() directly so we can monkeypatch Trainer
+    import lightning as L
+
+    original_init = L.Trainer.__init__
+
+    def fast_init(self, *args, **kwargs):
+        kwargs["max_epochs"] = 1
+        kwargs["limit_train_batches"] = 1
+        kwargs["accelerator"] = "cpu"
+        kwargs["logger"] = False
+        kwargs["enable_checkpointing"] = False
+        kwargs["enable_progress_bar"] = False
+        return original_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(L.Trainer, "__init__", fast_init)
+    monkeypatch.setattr(sys, "argv", ["train.py", "--config", str(cfg_path)])
+
+    # Import after monkeypatching argv
+    import importlib
+    if "train" in sys.modules:
+        del sys.modules["train"]
+    import train
+    train.main()
+    # If we reach this point without exception, the full pipeline ran one batch.
+
+
+def test_train_py_invalid_config_raises(tmp_path, monkeypatch):
+    """Pointing --config at a nonexistent file raises (not silently passes)."""
+    bogus = tmp_path / "does_not_exist.yaml"
+    monkeypatch.setattr(sys, "argv", ["train.py", "--config", str(bogus)])
+    if "train" in sys.modules:
+        del sys.modules["train"]
+    import train
+
+    with pytest.raises((FileNotFoundError, OSError)):
+        train.main()
