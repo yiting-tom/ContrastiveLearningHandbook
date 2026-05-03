@@ -22,7 +22,7 @@ Close 5 specific v1.0 code gaps: 3 `train.py` wiring fixes (InstanceDiscriminati
 - **D-04:** A **shared helper block** handles both SwAV and DINO: reads `n_large_crops, large_size, n_small_crops, small_size` from `SwAVConfig` when method is `"swav"`, uses hardcoded defaults for `"dino"`. One `if cfg.method in {"swav", "dino"}:` block, not two separate blocks.
 
 ### WIRE-03: SupCon stage-2 routing (train.py)
-- **D-05:** Detect `cfg.method == "supcon_finetune"`. Call `SupConFinetuneModule.from_stage1_ckpt(cfg, args.ckpt_path)` instead of `method_dispatcher(cfg)`.
+- **D-05:** Detect `cfg.method == "supcon_finetune"`. Call `SupConFinetuneModule.from_stage1_ckpt(args.ckpt_path, cfg)` instead of `method_dispatcher(cfg)`. (Signature: `ckpt_path` is first positional arg, `cfg` is second.)
 - **D-06:** If `--ckpt-path` is not provided when `method=supcon_finetune`, **raise a clear error** (`sys.exit(1)` with message: "supcon_finetune requires --ckpt-path pointing to a stage-1 checkpoint"). Prevents silent random-backbone training.
 - **D-07:** Do **not** pass `ckpt_path` to `trainer.fit()` for `supcon_finetune`. `from_stage1_ckpt()` loads the backbone; passing it to `trainer.fit()` would incorrectly try to resume Lightning training state from the stage-1 run.
 
@@ -72,7 +72,7 @@ Close 5 specific v1.0 code gaps: 3 `train.py` wiring fixes (InstanceDiscriminati
 - `ssl_collate_with_index(batch)` — collate fn for indexed batches; `core/data.py:119`
 - `MultiCropDataset` — accepts `dataset, large_crops, small_crops` params; `core/data.py:138`
 - `ssl_collate_multi_crop(batch)` — returns list of tensors; `core/data.py:189`
-- `SupConFinetuneModule.from_stage1_ckpt(cfg, ckpt_path)` — classmethod; `methods/supcon/module.py:260`
+- `SupConFinetuneModule.from_stage1_ckpt(ckpt_path, cfg)` — classmethod; `methods/supcon/module.py:260`
 
 ### Established Patterns
 - `SSLDataModule` accepts `dataset: Dataset | None` — when provided, skips ImageFolder creation; auto-selects `ssl_collate_multi_crop` when dataset is `MultiCropDataset`
