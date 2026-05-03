@@ -105,3 +105,31 @@ def test_train_py_invalid_config_raises(tmp_path, monkeypatch):
 
     with pytest.raises((FileNotFoundError, OSError)):
         train.main()
+
+
+# ---------------------------------------------------------------------------
+# Regression-B3: train.py must configure ModelCheckpoint(save_last=True)
+# ---------------------------------------------------------------------------
+
+def test_train_py_imports_model_checkpoint():
+    """B3 regression: train.py must import ModelCheckpoint from lightning.pytorch.callbacks."""
+    source = TRAIN_PY.read_text()
+    assert "from lightning.pytorch.callbacks import ModelCheckpoint" in source, (
+        "train.py does not import ModelCheckpoint — `last.ckpt` will never be created"
+    )
+
+
+def test_train_py_has_save_last_checkpoint():
+    """B3 regression: train.py must construct ModelCheckpoint(save_last=True, save_top_k=-1)."""
+    source = TRAIN_PY.read_text()
+    assert "ModelCheckpoint(save_last=True, save_top_k=-1)" in source, (
+        "train.py does not pre-seed callbacks with ModelCheckpoint(save_last=True, save_top_k=-1)"
+    )
+
+
+def test_train_py_knn_callback_wiring_preserved():
+    """Regression: the KNNCallback wiring must remain after B3 fix."""
+    source = TRAIN_PY.read_text()
+    assert "from eval.knn_callback import KNNCallback" in source, (
+        "train.py lost the KNNCallback wiring — eval.knn integration is broken"
+    )
