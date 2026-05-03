@@ -9,6 +9,13 @@ Usage:
 """
 from __future__ import annotations
 
+# B1 fix (phase 10.1): allow `python eval/finetune.py ...` from repo root
+# to find sibling `core` and `methods` packages without an editable install.
+# Reference: https://alex.dzyoba.com/blog/python-import/
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import argparse
 import math
 from pathlib import Path
@@ -190,8 +197,16 @@ def main() -> None:
     # Feature dimension from backbone
     feat_dim: int = backbone.num_features
 
-    # Build data module
-    dm = SSLDataModule(cfg)
+    # Build data module using the same kwargs train.py uses.
+    # B2 fix (phase 10.1): the previous call `SSLDataModule(cfg)` passed the
+    # entire TrainConfig as data_dir, silently using default n_views/batch_size
+    # and crashing later in setup() with "expected str, bytes or os.PathLike object".
+    dm = SSLDataModule(
+        data_dir=cfg.data_dir,
+        n_views=cfg.n_views,
+        batch_size=cfg.batch_size,
+        num_workers=cfg.num_workers,
+    )
     dm.setup("fit")
 
     # Infer num_classes from val dataset
