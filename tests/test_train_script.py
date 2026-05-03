@@ -138,3 +138,45 @@ def test_train_py_knn_callback_wiring_preserved():
     assert "from eval.knn_callback import KNNCallback" in source, (
         "train.py lost the KNNCallback wiring — eval.knn integration is broken"
     )
+
+
+# ---------------------------------------------------------------------------
+# Regression-B5 doc: README CIFAR-10 prep snippet must create both train/+val/
+# ---------------------------------------------------------------------------
+
+README = REPO_ROOT / "README.md"
+
+
+def test_readme_cifar10_prep_creates_both_splits():
+    """B5 doc: README CIFAR-10 prep snippet must loop over train AND val splits."""
+    source = README.read_text()
+    assert 'for split, train_flag in [("train", True), ("val", False)]:' in source, (
+        "README CIFAR-10 prep snippet only creates train/ split — val/ split missing"
+    )
+
+
+def test_readme_cifar10_prep_uses_root_variable():
+    """B5 doc: README CIFAR-10 prep must use root = Path('data/cifar10_imagefolder')."""
+    source = README.read_text()
+    assert 'root = Path("data/cifar10_imagefolder")' in source, (
+        "README CIFAR-10 prep does not define root variable for two-split loop"
+    )
+
+
+def test_readme_cifar10_prep_does_not_hardcode_train_only():
+    """B5 doc: README must NOT have old hardcoded single-split path."""
+    source = README.read_text()
+    assert 'out = Path("data/cifar10_imagefolder/train")' not in source, (
+        "README still has old hardcoded single-split path — val/ split missing"
+    )
+
+
+def test_readme_explanatory_line_points_at_parent_dir():
+    """B5 doc: README explanatory line must point --data-dir at parent (not .../train)."""
+    source = README.read_text()
+    assert "--data-dir data/cifar10_imagefolder/train" not in source, (
+        "README still instructs users to pass --data-dir data/cifar10_imagefolder/train"
+    )
+    assert "auto-detects the" in source and "train/" in source and "val/" in source, (
+        "README explanatory text does not mention auto-detection of train/+val/ splits"
+    )
