@@ -29,7 +29,24 @@ EVAL_DIR = REPO_ROOT / "eval"
 )
 def test_each_eval_script_help_exits_zero(script: str) -> None:
     """Regression for B1: every eval script imports successfully via `python eval/X.py --help`."""
-    raise NotImplementedError("Wave 0 stub — filled in plan 10.1-05")
+    script_path = EVAL_DIR / script
+    assert script_path.exists(), f"{script_path} does not exist"
+    result = subprocess.run(
+        [sys.executable, str(script_path), "--help"],
+        cwd=str(REPO_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, (
+        f"eval/{script} --help exited {result.returncode}\n"
+        f"stderr:\n{result.stderr}\n"
+        f"stdout:\n{result.stdout}"
+    )
+    # B1 sanity: a clean argparse --help writes "usage:" to stdout
+    assert "usage:" in result.stdout.lower(), (
+        f"eval/{script} --help did not print usage; stdout=\n{result.stdout}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -37,8 +54,23 @@ def test_each_eval_script_help_exits_zero(script: str) -> None:
 # ---------------------------------------------------------------------------
 
 def test_no_ssldatamodule_cfg_misuse() -> None:
-    """Regression for B2: greps eval/*.py source for `SSLDataModule(cfg)` mis-construction."""
-    raise NotImplementedError("Wave 0 stub — filled in plan 10.1-05")
+    """Regression for B2: greps eval/*.py source for `SSLDataModule(cfg)` mis-construction.
+
+    Comment-aware: lines starting with `#` or `"` are skipped so docstrings and
+    inline comments (like the explanatory ones added by plan 10.1-03 task 1)
+    do not self-invalidate this gate.
+    """
+    eval_dir = REPO_ROOT / "eval"
+    bad: list[str] = []
+    for py in sorted(eval_dir.glob("*.py")):
+        for i, line in enumerate(py.read_text().splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith("#") or stripped.startswith('"'):
+                continue
+            # bare bug pattern only — `SSLDataModule(data_dir=cfg.data_dir, ...)` is fine
+            if stripped.startswith("dm = SSLDataModule(cfg)") or stripped == "SSLDataModule(cfg)":
+                bad.append(f"{py.name}:{i}: {stripped}")
+    assert not bad, "SSLDataModule(cfg) misuse found:\n" + "\n".join(bad)
 
 
 # ---------------------------------------------------------------------------
