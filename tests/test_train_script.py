@@ -79,7 +79,12 @@ def test_train_py_runs_one_batch_on_toy_data(tmp_imagefolder, tmp_path, monkeypa
         kwargs["limit_train_batches"] = 1
         kwargs["accelerator"] = "cpu"
         kwargs["logger"] = False
-        kwargs["enable_checkpointing"] = False
+        # Do NOT set enable_checkpointing=False: train.py now passes a
+        # ModelCheckpoint callback (B3 fix), and Lightning raises
+        # MisconfigurationException when enable_checkpointing=False conflicts
+        # with an explicit ModelCheckpoint in the callbacks list.
+        # Use default_root_dir so checkpoints are isolated to tmp_path.
+        kwargs.setdefault("default_root_dir", str(tmp_path))
         kwargs["enable_progress_bar"] = False
         return original_init(self, *args, **kwargs)
 
