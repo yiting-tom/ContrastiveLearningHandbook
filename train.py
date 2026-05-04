@@ -20,7 +20,7 @@ import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint
 
 from core.config import load_config
-from core.data import SSLDataModule, IndexedDataset
+from core.data import SSLDataModule, IndexedDataset, MultiCropDataset
 from core.dispatcher import method_dispatcher
 import methods  # noqa: F401  triggers register_method() for all 14 methods
 
@@ -65,6 +65,32 @@ def main() -> None:
         _transform = MultiViewTransform(_aug, n_views=cfg.n_views)
         _base = ImageFolder(_train_dir, transform=_transform)
         _wrapped_dataset = IndexedDataset(_base)
+
+    # WIRE-02 (D-03, D-04): SwAV and DINO require multi-scale crops.
+    # Shared block reads crop params from SwAVConfig for "swav"; uses hardcoded
+    # DINO paper defaults (2×224 + 6×96) for "dino" — avoids DINOConfig schema churn.
+    if cfg.method in {"swav", "dino"}:
+        from torchvision.datasets import ImageFolder
+        import os as _os
+        _train_dir = _os.path.join(cfg.data_dir, "train")
+        if not _os.path.isdir(_train_dir):
+            _train_dir = cfg.data_dir
+        _base_no_transform = ImageFolder(_train_dir)  # NO transform — MultiCropDataset applies its own
+        if cfg.method == "swav" and cfg.swav is not None:
+            _n_large = cfg.swav.n_large_crops   # default: 2
+            _large_sz = cfg.swav.large_size     # default: 224
+            _n_small = cfg.swav.n_small_crops   # default: 6
+            _small_sz = cfg.swav.small_size     # default: 96
+        else:
+            # DINO paper defaults (D-03): 2×224 + 6×96
+            _n_large, _large_sz, _n_small, _small_sz = 2, 224, 6, 96
+        _wrapped_dataset = MultiCropDataset(
+            _base_no_transform,
+            n_large_crops=_n_large,
+            large_size=_large_sz,
+            n_small_crops=_n_small,
+            small_size=_small_sz,
+        )
 
     # WIRE-03 (D-05, D-06, D-07): SupCon stage-2 must load the stage-1 backbone.
     # The default dispatcher for "supcon_finetune" would instantiate a random backbone.
