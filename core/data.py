@@ -345,7 +345,9 @@ class SSLDataModule(L.LightningDataModule):
             self.val_dataset = None
 
     def train_dataloader(self):
-        if isinstance(self.train_dataset, MultiCropDataset):
+        if isinstance(self.train_dataset, IndexedDataset):
+            collate = ssl_collate_with_index
+        elif isinstance(self.train_dataset, MultiCropDataset):
             collate = ssl_collate_multi_crop
         else:
             collate = ssl_collate_fn
