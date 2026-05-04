@@ -20,7 +20,7 @@ import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint
 
 from core.config import load_config
-from core.data import SSLDataModule
+from core.data import SSLDataModule, IndexedDataset
 from core.dispatcher import method_dispatcher
 import methods  # noqa: F401  triggers register_method() for all 14 methods
 
@@ -50,6 +50,22 @@ def main() -> None:
     if args.data_dir is not None:
         cfg = cfg.model_copy(update={"data_dir": args.data_dir})
 
+    # WIRE-01 (D-01): Instance Discrimination requires sample indices for memory bank updates.
+    # Wrap the base ImageFolder dataset in IndexedDataset before handing to SSLDataModule.
+    # SSLDataModule.train_dataloader() detects IndexedDataset and selects ssl_collate_with_index.
+    _wrapped_dataset = None
+    if cfg.method == "instance_discrimination":
+        from torchvision.datasets import ImageFolder
+        import os as _os
+        _train_dir = _os.path.join(cfg.data_dir, "train")
+        if not _os.path.isdir(_train_dir):
+            _train_dir = cfg.data_dir
+        from core.data import MultiViewTransform, ContrastiveAugmentation
+        _aug = ContrastiveAugmentation(size=224, strong=False)
+        _transform = MultiViewTransform(_aug, n_views=cfg.n_views)
+        _base = ImageFolder(_train_dir, transform=_transform)
+        _wrapped_dataset = IndexedDataset(_base)
+
     # WIRE-03 (D-05, D-06, D-07): SupCon stage-2 must load the stage-1 backbone.
     # The default dispatcher for "supcon_finetune" would instantiate a random backbone.
     # from_stage1_ckpt() loads backbone.* weights and freezes them before returning.
@@ -72,6 +88,7 @@ def main() -> None:
         n_views=cfg.n_views,
         batch_size=cfg.batch_size,
         num_workers=cfg.num_workers,
+        dataset=_wrapped_dataset,
     )
 
     # Always save `last.ckpt` so that documented eval commands
