@@ -30,3 +30,17 @@ wandb/
 
 # macOS
 .DS_Store
+
+# node (pptxgenjs)
+node_modules/
+
+# datasets & downloaded weights (large, reproducible)
+data/
+
+# server transfer / training artifacts (large, derived)
+server_pkg/snaps_pulled/
+server_pkg/wheelhouse/
+server_pkg/*.tgz
+
+# rendered PDFs
+*.pdf
