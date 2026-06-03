@@ -24,7 +24,7 @@ from PIL import Image
 SNAPS = Path("server_pkg/snaps_pulled")
 OUT = Path("demo_assets/gifs"); OUT.mkdir(parents=True, exist_ok=True)
 METHODS = ["instance_discrimination", "invariant_spread", "simclr_v1", "simclr_v2",
-           "infomin", "byol", "simsiam"]
+           "infomin", "byol", "simsiam", "moco_v1", "moco_v2", "swav", "barlow_twins", "moco_v3", "dino"]
 NAVY2 = "#182740"
 PALETTE = ["#22D3EE", "#F59E0B", "#F43F5E", "#8B5CF6", "#34D399",
            "#FB7185", "#60A5FA", "#FBBF24", "#A78BFA", "#2DD4BF"]

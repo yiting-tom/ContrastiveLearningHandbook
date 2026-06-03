@@ -22,7 +22,7 @@ from torch.utils.data import DataLoader, Subset
 
 from core.config import load_config
 from core.data import (SSLDataModule, IndexedDataset, MultiViewTransform,
-                       ContrastiveAugmentation)
+                       ContrastiveAugmentation, MultiCropDataset)
 from core.dispatcher import method_dispatcher
 import methods  # noqa: F401
 
@@ -34,6 +34,12 @@ CONFIG = {
     "infomin": "configs/infomin_resnet18.yaml",
     "byol": "configs/byol_resnet18.yaml",
     "simsiam": "configs/simsiam_resnet18.yaml",
+    "moco_v1": "configs/moco_v1_resnet18.yaml",
+    "moco_v2": "configs/moco_v2_resnet18.yaml",
+    "swav": "configs/swav_resnet18.yaml",
+    "barlow_twins": "configs/barlow_twins_resnet18.yaml",
+    "moco_v3": "configs/moco_v3_vit_small.yaml",
+    "dino": "configs/dino_vit_small.yaml",
 }
 N_EVAL = 2000  # fixed eval subset for UMAP
 
@@ -88,10 +94,17 @@ def build(method, data_dir, epochs, size, workers, grad_clip=None):
     cfg = load_config(CONFIG[method]).model_copy(update=upd)
     model = method_dispatcher(cfg)
     wrapped = None
+    td = Path(data_dir) / "train"
     if method == "instance_discrimination":
-        td = Path(data_dir) / "train"
         aug = ContrastiveAugmentation(size=size, strong=False)
         wrapped = IndexedDataset(ImageFolder(str(td), transform=MultiViewTransform(aug, n_views=cfg.n_views)))
+    elif method == "swav":
+        wrapped = MultiCropDataset(ImageFolder(str(td)), n_large_crops=2, large_size=size,
+                                   n_small_crops=4, small_size=max(48, size // 2))
+    elif method == "dino":
+        # ViT needs the same fixed resolution for every crop
+        wrapped = MultiCropDataset(ImageFolder(str(td)), n_large_crops=2, large_size=size,
+                                   n_small_crops=2, small_size=size)
     dm = SSLDataModule(data_dir=data_dir, n_views=cfg.n_views, batch_size=cfg.batch_size,
                        num_workers=workers, dataset=wrapped, size=size)
     return cfg, model, dm

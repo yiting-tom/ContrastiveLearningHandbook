@@ -44,3 +44,6 @@ server_pkg/*.tgz
 
 # rendered PDFs
 *.pdf
+
+# Office lock/temp files
+~$*

@@ -19,7 +19,7 @@ OUT = Path("demo_assets/methods"); OUT.mkdir(parents=True, exist_ok=True)
 PROG = Path("demo_assets/progression"); PROG.mkdir(parents=True, exist_ok=True)
 EPOCHS = [0, 5, 15, 30, 50, 80, 120, 160, 200]  # denser readable subset for static strips
 METHODS = ["instance_discrimination", "invariant_spread", "simclr_v1", "simclr_v2",
-           "infomin", "byol", "simsiam"]
+           "infomin", "byol", "simsiam", "moco_v1", "moco_v2", "swav", "barlow_twins", "moco_v3", "dino"]
 
 NAVY2 = "#182740"
 PALETTE = ["#22D3EE", "#F59E0B", "#F43F5E", "#8B5CF6", "#34D399",
