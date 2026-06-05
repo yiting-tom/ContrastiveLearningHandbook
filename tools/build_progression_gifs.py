@@ -14,6 +14,7 @@ Run:  python tools/build_progression_gifs.py
 from __future__ import annotations
 from pathlib import Path
 import re
+import sys
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -62,7 +63,8 @@ def render(emb, labels, ep, xlim, ylim):
 
 
 def main():
-    for m in METHODS:
+    only = sys.argv[1].split(",") if len(sys.argv) > 1 else METHODS
+    for m in only:
         eps = epochs_for(m)
         if not eps:
             print(f"!! {m}: no snapshots", flush=True); continue

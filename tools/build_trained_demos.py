@@ -8,6 +8,7 @@ Run:  python tools/build_trained_demos.py
 """
 from __future__ import annotations
 from pathlib import Path
+import sys
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -63,7 +64,8 @@ def plot_strip(items, path):  # items = [(epoch, emb, labels), ...]
 
 
 def main():
-    for m in METHODS:
+    only = sys.argv[1].split(",") if len(sys.argv) > 1 else METHODS
+    for m in only:
         print(f"=== {m} ===", flush=True)
         fin = load_clean(SNAPS / f"{m}_ep200.npz")
         if fin is not None:

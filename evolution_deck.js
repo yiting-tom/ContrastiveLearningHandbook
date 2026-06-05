@@ -56,55 +56,55 @@ const NOTES = {
     "好,故事正式開始。把時間拉回到二零一八年。當時大家被一個很基本、但很煩人的問題卡住:我手上有一大堆圖片,可是完全沒有標籤——沒有人告訴我哪張是貓、哪張是狗。問題來了,模型要學什麼?你總得給它一個「任務」吧?可是任務從哪來?標籤就是我們最大的那根拐杖,現在這根拐杖被抽掉了。第一幕,我們就來看前人怎麼無中生有,硬是替模型生出一個任務。",
     "走到舞台中央,停頓一拍再開口。說到「沒有標籤」時攤手;說到「無中生有」時故意放慢、製造懸念,然後切下一頁。"),
   instance_discrimination: N(
-    "第一個答案聰明到有點任性:既然沒有標籤,那我就規定——每一張圖,就是它自己的一類。一百萬張圖,就是一百萬類。模型的任務,就是把每張圖跟其他所有圖區分開來。但這裡有個工程難題:你不可能每一步都去比對全部一百萬張。所以他們用了一個 memory bank,把每張圖的特徵先存起來,當作現成的負樣本庫;再用 NCE 去近似那個算不動的巨大 softmax。記憶點就一個:它把每張圖當成一類。但它撞牆的地方也很經典——bank 裡存的特徵是好幾輪以前算的,模型一直在進步,bank 卻在吃回頭草,特徵會過時。這個「過時」,就是下一步要解決的痛。",
+    "第一個答案聰明到有點任性:既然沒有標籤,那我就規定——每一張圖,就是它自己的一類。一百萬張圖,就是一百萬類。模型的任務,就是把每張圖跟其他所有圖區分開來。但這裡有個工程難題:你不可能每一步都去比對全部一百萬張。所以架構上他們用了一個 memory bank,把每張圖的特徵先存起來,當作現成的負樣本庫;loss 則想用 softmax——白話講就是「在一堆候選裡挑出正確那一個」的機率——但候選有上百萬個、分母算不動,只好用 NCE 這個抽樣技巧去近似它(只抽一小撮負樣本來算,而不是全部)。記憶點就一個:它把每張圖當成一類。但它撞牆的地方也很經典——bank 裡存的特徵是好幾輪以前算的,模型一直在進步,bank 卻在吃回頭草,特徵會過時。這個「過時」,就是下一步要解決的痛。",
     "比出「一張圖 = 一類」的手勢。講到 memory bank 時指向圖中的 bank 方塊。「吃回頭草」這句加重語氣,帶點調侃。"),
   invariant_spread: N(
-    "隔年就有人說:那我乾脆不要 bank 了。Invariant Spread 的想法很直接——同一張圖做兩種增強,這兩個視角要拉近,叫 invariant;不同的圖要推開,叫 spread。負樣本不從什麼 bank 拿,就用這一個 batch 裡的其他圖,當下算、當下用,絕對不會過時。它用的就是對稱的 InfoNCE。記憶點是:它其實就是 SimCLR 的直系祖先,核心配方在這裡已經成形了,只是當年沒有把規模拉到爆。所以你看,我們才剛拿掉標籤,馬上又順手把 memory bank 這根拐杖也丟了。",
+    "隔年就有人說:那我乾脆不要 bank 了。Invariant Spread 的想法很直接——同一張圖做兩種增強,這兩個視角要拉近,叫 invariant;不同的圖要推開,叫 spread。負樣本不從什麼 bank 拿,就用這一個 batch 裡的其他圖,當下算、當下用,絕對不會過時。架構上它就是兩條共享權重的分支——同一張圖的兩個視角各走一條,loss 則是把開場那條 InfoNCE 對稱地算兩次。跟前一個比,差別就在拿掉了 memory bank、改用 in-batch 負樣本(直接用這個 batch 裡的其他圖)。記憶點是:它其實就是 SimCLR 的直系祖先,核心配方在這裡已經成形了,只是當年沒有把規模拉到爆。所以你看,我們才剛拿掉標籤,馬上又順手把 memory bank 這根拐杖也丟了。",
     "用兩手比「拉近」與「推開」。講到「直系祖先」時停頓,眼神看向觀眾,埋伏筆。「丟了」收尾乾脆。"),
   act2: N(
     "好,進入第二幕,而這一幕是整個故事最精彩的分岔。前面我們確立了一件事:對比學習要 work,你得有大量、而且新鮮的負樣本去把表徵推開,不然就會坍塌成一坨。問題是——這麼多負樣本,到底要從哪裡生出來?二零二零年,兩派人馬給了兩個完全不同的答案,直接吵成一場世紀對決。一派說「我用 queue 存起來」,另一派說「我 batch 開到爆就好」。我們先看第一派。",
     "語速稍微加快,點出「最精彩的分岔」。講到「兩派」時左右手各指一邊,做出對峙的架勢。"),
   moco_v1: N(
-    "第一派是何愷明團隊的 MoCo。他們的洞見是:負樣本不一定要在這一個 batch 裡,我可以拿一條 FIFO 佇列,把過去好幾個 batch 的特徵都排隊存起來當負樣本。這樣負樣本的數量,就跟你的 batch size 完全脫鉤了——batch 很小,我照樣有上萬個負樣本。可是等等,這不就回到 Instance Discrimination「特徵會過時」的老問題嗎?這就是他們最漂亮的一招:動量編碼器。負樣本那一邊的編碼器不用梯度更新,而是慢慢地、平滑地去跟上主編碼器,所以 queue 裡的特徵雖然是舊的,卻是一致的、不會亂跳。記憶點:小 batch 也能有海量又一致的負樣本。",
+    "第一派是何愷明團隊的 MoCo。他們的洞見是:負樣本不一定要在這一個 batch 裡,我可以拿一條 FIFO 佇列——先進先出,新特徵推進去、最舊的被擠掉——把過去好幾個 batch 的特徵排隊存起來當負樣本。這樣負樣本的數量,就跟你的 batch size 完全脫鉤了——batch 很小,我照樣有上萬個負樣本。可是等等,這不就回到 Instance Discrimination「特徵會過時」的老問題嗎?這就是他們最漂亮的一招:動量編碼器。負樣本那一邊的編碼器不用梯度更新,而是用動量(也就是 EMA)——一步只吸收一點點主編碼器的更新、慢慢平滑地跟上,所以 queue 裡的特徵雖然舊,卻一致、不會亂跳。loss 本身還是開場那條 InfoNCE,只是負樣本改成從 queue 撈——跟前一個比,差別就在這條 queue 加動量編碼器。記憶點:小 batch 也能有海量又一致的負樣本。",
     "講到 queue 時指圖中佇列方塊。「可是等等」這裡刻意停頓、皺眉,製造回扣懸念,再揭曉動量編碼器這招。"),
   moco_v2: N(
-    "MoCo v2 這頁很快。它沒有什麼新的大理論,就是一次很務實的工程升級:把對手 SimCLR 那邊驗證有效的三樣好料——MLP 投影頭、更強的高斯模糊增強、還有 cosine 學習率排程——直接搬進 MoCo 的框架裡。結果就是,在小資源、小 batch 的條件下,逼近了要用 TPU 大 batch 的 SimCLR。記憶點:好的點子會互相偷,而且偷得理直氣壯。這也預告了我們接下來要看的對手。",
+    "MoCo v2 這頁很快。它沒有什麼新的大理論,loss 跟架構都跟 v1 一模一樣,就是一次很務實的工程升級:把對手 SimCLR 那邊驗證有效的三樣好料——MLP 投影頭(在編碼器後面再接一個小網路、把特徵投影到算 loss 的空間,只在訓練時用、評估就丟掉)、更強的高斯模糊增強、還有 cosine 學習率排程——直接搬進 MoCo 的框架裡。結果就是,在小資源、小 batch 的條件下,逼近了要用 TPU 大 batch 的 SimCLR。記憶點:好的點子會互相偷,而且偷得理直氣壯。這也預告了我們接下來要看的對手。",
     "語氣輕快帶笑。「互相偷」這句故意俏皮,逗一下觀眾。手指向下一頁方向。"),
   simclr_v1: N(
-    "好,換另一派出場,Hinton 團隊的 SimCLR,理念跟 MoCo 完全相反。他們說:我幹嘛搞什麼佇列、什麼動量?太麻煩了。我就把 batch 開到超級大,大到光是這一個 batch 裡面,就有幾千個負樣本可以互相比,根本不需要存歷史。框架簡單到不行。但他們發現一個關鍵——強增強才是真正的靈魂,尤其是夠狠的 color jitter 加高斯模糊,沒有它整個就學不起來。記憶點,也是它的痛點:這條路要 work,你得有 TPU 等級的超大 batch,一般實驗室根本玩不起。所以你看,MoCo 跟 SimCLR 這兩派之爭,本質上就是同一個問題——負樣本從哪來——的兩種哲學:一邊省記憶體用 queue,一邊用蠻力堆 batch。",
+    "好,換另一派出場,Hinton 團隊的 SimCLR,理念跟 MoCo 完全相反。他們說:我幹嘛搞什麼佇列、什麼動量?太麻煩了。我就把 batch 開到超級大,大到光是這一個 batch 裡面,就有幾千個負樣本可以互相比,根本不需要存歷史。架構簡單到不行:就是兩條共享權重的分支、各接一個 MLP 投影頭,loss 叫 NT-Xent——名字嚇人,其實就是開場那條 InfoNCE 把特徵先做 L2 正規化後的版本。但他們發現一個關鍵——強增強才是真正的靈魂,尤其是夠狠的 color jitter 加高斯模糊,沒有它整個就學不起來。記憶點,也是它的痛點:這條路要 work,你得有 TPU 等級的超大 batch,一般實驗室根本玩不起。所以你看,MoCo 跟 SimCLR 這兩派之爭,本質上就是同一個問題——負樣本從哪來——的兩種哲學:一邊省記憶體用 queue,一邊用蠻力堆 batch。",
     "出場時語氣轉強、像介紹對手登場。講「太麻煩了」時模仿不屑表情。結尾把兩派並排對比,左右手各代表一派,做總結手勢。"),
   simclr_v2: N(
-    "SimCLR v2 是同一條路的加強版,主軸是「規模」。兩個改動:投影頭從兩層加深到三層,backbone 換成更大更深的模型。它真正想證明的事情很有意思——大型自監督模型,其實是非常強的半監督學習者:先用海量無標籤資料把大模型 pretrain 好,再用極少量的標籤微調、最後蒸餾到小模型。記憶點:模型越大,從無標籤資料裡榨出來的東西越多。",
+    "SimCLR v2 是同一條路的加強版,loss 完全沒變、還是 NT-Xent,主軸只在「規模」。兩個改動:投影頭從兩層加深到三層,backbone 換成更大更深的模型。它真正想證明的事情很有意思——大型自監督模型,其實是非常強的半監督學習者:先用海量無標籤資料把大模型 pretrain 好,再用極少量的標籤微調、最後「蒸餾」到小模型(蒸餾就是讓訓練好的大模型當老師、去教一個小模型,把能力壓縮進去)。記憶點:模型越大,從無標籤資料裡榨出來的東西越多。",
     "用手比「加深、變大」的動作。講到「只要一點點標籤」時用拇指食指比一個很小的縫隙。"),
   swav: N(
-    "到這裡,有人開始覺得「兩兩比較」這件事本身就很笨重。SwAV 跳出來說:我不要再一對一去比哪張圖跟哪張圖了。我設一組 prototypes,可以想成一群可學習的群心;每張圖去算它屬於哪些群,得到一個「分配」。訣竅在於它用 Sinkhorn 演算法,強迫這些分配要均勻攤平到每個群,不准全部擠到同一個群——這一步本身就在防坍塌。再加上 multi-crop,一張圖切兩大塊加好幾小塊,等於免費多了好多視角。記憶點最關鍵:它完全不需要成對的負樣本了。等一下,不用負樣本也能不坍塌?這句話,正好把我們推向最後的懸念。",
+    "到這裡,有人開始覺得「兩兩比較」這件事本身就很笨重。SwAV 跳出來說:我不要再一對一去比哪張圖跟哪張圖了。架構上它換了打法:設一組 prototypes,可以想成一群可學習的群心;每張圖去算它比較接近哪些群,得到一個「分配」(也叫 code)。loss 也跟前面不一樣——不再是 InfoNCE,而是 swapped prediction:拿一個視角算出的特徵,去預測「另一個視角」的群分配,兩邊互換著猜,用的是交叉熵。訣竅在於它用 Sinkhorn 演算法,強迫這些分配要均勻攤平到每個群,不准全部擠到同一個群——這一步本身就在防坍塌。再加上 multi-crop,一張圖切兩大塊加好幾小塊,等於免費多了好多視角。記憶點最關鍵:它完全不需要成對的負樣本了。等一下,不用負樣本也能不坍塌?這句話,正好把我們推向最後的懸念。",
     "講 prototypes 時手在空中畫幾個群心。「不用負樣本也能不坍塌?」這句放慢、上揚,故意當作鉤子。"),
   infomin: N(
-    "在收這一幕之前,InfoMin 提了一個很哲學、但超級重要的問題。前面大家都在卷負樣本、卷架構,它卻退一步問:我們一直在拉近兩個增強視角,那到底——什麼樣的視角才是「好」的視角?它的答案叫 minimal sufficient,最小充分:兩個視角之間,該共享的語意要全部留住,但不該共享的、像顏色、紋理這種捷徑,要盡量砍掉。怎麼砍?用更激進的資料增強去破壞那些捷徑,逼模型不能偷懶。記憶點:有時候瓶頸不在 loss、不在架構,而在你餵進去的「視角」本身。好,第二幕到這裡。我們看到負樣本被玩出各種花樣,可是 SwAV 已經偷偷暗示了——負樣本根本不是唯一解。那如果,我們把這個念頭推到極致,乾脆連一個負樣本都不要呢?下一幕見。",
+    "在收這一幕之前,InfoMin 提了一個很哲學、但超級重要的問題。先說它跟前面的差異:它沿用 SimCLR 的 backbone 跟 NT-Xent,唯一動手腳的是「餵進去的視角」。前面大家都在卷負樣本、卷架構,它卻退一步問:我們一直在拉近兩個增強視角,那到底——什麼樣的視角才是「好」的視角?它的答案叫 minimal sufficient,最小充分:兩個視角之間,該共享的語意要全部留住,但不該共享的、像顏色、紋理這種捷徑,要盡量砍掉。怎麼砍?用更激進的資料增強去破壞那些捷徑,逼模型不能偷懶。記憶點:有時候瓶頸不在 loss、不在架構,而在你餵進去的「視角」本身。好,第二幕到這裡。我們看到負樣本被玩出各種花樣,可是 SwAV 已經偷偷暗示了——負樣本根本不是唯一解。那如果,我們把這個念頭推到極致,乾脆連一個負樣本都不要呢?下一幕見。",
     "「退一步問」時身體微微後仰,做出思考姿態。最後三句語速放慢、加重,「連一個負樣本都不要呢」拋給觀眾後停頓兩秒,再切轉場。"),
   act3: N(
     "好,我們走到整個故事最瘋狂的一幕了。前面我們一路在拿拐杖:先拿掉人工標籤、再拿掉巨大的 batch、拿掉那個 memory queue。但有一根拐杖,從第一天到現在,誰都不敢碰——就是「負樣本」。負樣本是幹嘛的?它是那個「推開」的力量。對比學習的精神就是一句話:拉近自己、推開別人。那如果我把「推開別人」整個拿掉呢?你想想看,如果只剩下「拉近」、沒有任何「推開」,模型最聰明的偷懶方式是什麼?就是把所有東西都對應到同一個點——所有圖片都長一樣,loss 直接歸零,完美收工。這就是我們從頭到尾最怕的那個惡夢:坍塌,collapse。所以當年大家的共識是:沒有負樣本,一定坍塌。沒有例外。記住這個共識——因為接下來這幾篇,就是來打臉它的。",
     "走到舞台中央,停頓一下製造儀式感。講到「沒有負樣本一定坍塌」時放慢、加重,停 1 秒再翻頁。手可以做一個「推開」再「縮成一點」的動作。"),
   byol: N(
-    "第一個跳出來的是 BYOL。它直接說:我不要負樣本,一個都不要。全場都在等著看它坍塌。它怎麼做的?兩條分支,一條叫 online、一條叫 target。重點來了:online 這邊偷偷多接一個小網路,叫 predictor,讓兩邊不對稱;而 target 不自己學,它是 online 的「慢動作影分身」,用動量慢慢跟上,而且 target 這端切斷梯度。結果呢?它就是沒坍塌,而且效果好到嚇人。當時大家第一反應是「這一定哪裡有 bug」。記憶點就一句:靠不對稱,而不是靠推開,也能撐住不坍塌。負樣本這根拐杖,第一次被丟掉了。",
+    "第一個跳出來的是 BYOL。它直接說:我不要負樣本,一個都不要。全場都在等著看它坍塌。它怎麼做的?架構上有兩條分支,一條叫 online、一條叫 target。重點來了:online 這邊特別多接一個小網路,叫 predictor,刻意讓兩條分支不對稱;而 target 不自己學,它是 online 的「慢動作影分身」,用動量(EMA、把過去權重慢慢平均)跟上,而且 target 這端切斷梯度。loss 也從對比式整個換掉——不再推開誰,而是讓 online 經過 predictor 去「預測」target 的特徵、把兩者拉近(用 MSE 均方誤差)。跟前面所有方法最大的差別就是:它一個負樣本都沒有。結果呢?它就是沒坍塌,而且效果好到嚇人。當時大家第一反應是「這一定哪裡有 bug」。記憶點就一句:靠不對稱,而不是靠推開,也能撐住不坍塌。負樣本這根拐杖,第一次被丟掉了。",
     "翻到 BYOL 頁,指架構圖上的 predictor 小框。講「慢動作影分身」時可比手勢。「沒坍塌」三個字加重,露出一點驚訝表情,把觀眾的好奇勾起來。"),
   simsiam: N(
-    "BYOL 之後大家鬆一口氣,想說好,原來是那個動量 EMA 在偷偷防坍塌。結果何愷明團隊出來說:不,你們連這個都想多了。SimSiam 把動量 EMA 也砍掉,兩條分支直接共享同一個網路,沒有影分身、沒有 queue,什麼都沒有。那它靠什麼不坍塌?就靠一個動作——stop-gradient,梯度在那一端停下來。就這樣。它等於是做了一個最小化的實驗,把所有東西都拿光,只留一根,然後指著它說:看,真正防坍塌的關鍵,從頭到尾就是這個 stop-gradient。乾淨、漂亮,一刀見血。",
+    "BYOL 之後大家鬆一口氣,想說好,原來是那個動量 EMA 在偷偷防坍塌。結果何愷明團隊出來說:不,你們連這個都想多了。SimSiam 把動量 EMA 也砍掉,兩條分支直接共享同一個網路,沒有影分身、沒有 queue,什麼都沒有——架構比 BYOL 更精簡,差別就在它連 EMA target 都拿掉了,只留 predictor 跟那一刀。那它靠什麼不坍塌?就靠一個動作——stop-gradient,梯度在 target 那一端停下來、不往回傳。loss 則是負餘弦相似度(就是讓兩邊特徵的方向盡量對齊、愈像愈好)。就這樣。它等於是做了一個最小化的實驗,把所有東西都拿光,只留一根,然後指著它說:看,真正防坍塌的關鍵,從頭到尾就是這個 stop-gradient。乾淨、漂亮,一刀見血。",
     "翻頁。講「全部砍掉」時手做連續刪除動作。講到 stop-gradient 時指圖上那個 ⊘ 停止符號,停半秒,強調「就這一根」。"),
   barlow_twins: N(
-    "Barlow Twins 更有意思,它不跟你玩拉近推開了,它換了一整套哲學。它說:我來看兩個視角嵌入之間的「互相關矩陣」。你只要逼這個矩陣變成單位矩陣就好——對角線是 1,代表同一張圖的兩個視角要一致;非對角線壓到 0,代表每個維度不要互相重複、不要講同一件事。這叫「消除冗餘」。神奇的是,它沒有負樣本、沒有 EMA、也沒有 predictor,全部的功夫都在 loss 上。那到這裡,我們把三篇放在一起看,會看出一條共同的線索:防坍塌的關鍵,從來不是「推開別人」,而是「打破對稱」。不管你用 predictor、用 stop-gradient、還是逼互相關矩陣去冗餘,本質上都是同一件事——不讓兩邊塌成一模一樣。這就是 ACT 3 留給我們的那句話。",
+    "Barlow Twins 更有意思,它不跟你玩拉近推開了,它換了一整套哲學。架構還是兩條共享權重的分支,只是後面接一個維度開得很寬的投影頭(到八千多維,這對它特別重要)。它說:我來看兩個視角嵌入之間的「互相關矩陣」——白話講,就是把「兩邊每一個特徵維度彼此有多相關」量出來、排成一張方表。你只要逼這個矩陣變成單位矩陣就好——對角線是 1,代表同一張圖的兩個視角要一致;非對角線壓到 0,代表每個維度不要互相重複、不要講同一件事。這叫「消除冗餘」。神奇的是,它沒有負樣本、沒有 EMA、也沒有 predictor,全部的功夫都在 loss 上。所以跟剛剛的 SimSiam 比,它連 stop-gradient 那一刀都不用——SimSiam 是靠停梯度打破對稱,Barlow Twins 則是直接在 loss 裡逼互相關矩陣去冗餘,完全是另一條路。那到這裡,我們把三篇放在一起看,會看出一條共同的線索:防坍塌的關鍵,從來不是「推開別人」,而是「打破對稱」。不管你用 predictor、用 stop-gradient、還是逼互相關矩陣去冗餘,本質上都是同一件事——不讓兩邊塌成一模一樣。這就是 ACT 3 留給我們的那句話。",
     "翻頁,指 loss 公式 C→I。講「打破對稱」這個收束句時放慢、看向全場,這是這一幕的結論,要讓它沉下去。"),
   act4: N(
     "好,到這裡我們的拐杖幾乎全拿光了:標籤、大 batch、queue、負樣本,一根一根丟掉。但有一件事一直沒變——底下那台引擎,一直都是 CNN、是 ResNet。那同一個時間,影像界正在發生一場大地震:Transformer 打進來了,ViT 出現了。問題就來了:如果我把對比學習底下的引擎,整個換成 Transformer,會發生什麼事?是無痛接上,還是又會炸出新的坍塌?我們最後一幕,就是看這群人怎麼把這台新引擎馴服,然後一路衝到今天的基礎模型。",
     "走回舞台中央。語氣轉成「最後一幕」的收尾感。講「換成 Transformer」時停一下,丟出懸念再翻頁。"),
   moco_v3: N(
-    "第一個吃螃蟹的是 MoCo v3。它把對比學習直接搬到 ViT 上,結果一訓練就發現:超不穩,loss 會突然亂跳,訓到一半整個爛掉。團隊抓了很久,最後抓到一個超反直覺的兇手——是最前面那層 patch embedding,就是把圖片切成小塊、投影成向量的那一層。他們的解法簡單到誇張:把那一層直接凍結,不訓練它。一凍,整個就穩了。順手他們也把那個 memory queue 丟掉,改用 batch 內互相當負樣本。記憶點:有時候穩定性的關鍵,不在你拚命調的地方,而在最不起眼的第一層。",
+    "第一個吃螃蟹的是 MoCo v3。它把對比學習直接搬到 ViT 上——架構大致還是 MoCo 那套 query/key 兩個編碼器,差別就在 backbone 從 ResNet 換成了 Transformer。結果一訓練就發現:超不穩,loss 會突然亂跳,訓到一半整個爛掉。團隊抓了很久,最後抓到一個超反直覺的兇手——是最前面那層 patch embedding,就是把圖片切成小塊、投影成向量的那一層。他們的解法簡單到誇張:把那一層直接凍結,不訓練它。一凍,整個就穩了。順手他們也把那個 memory queue 丟掉,loss 改回 SimCLR 那種 batch 內互相當負樣本的對稱 InfoNCE。記憶點:有時候穩定性的關鍵,不在你拚命調的地方,而在最不起眼的第一層。",
     "翻頁,指架構圖最底下的 patch embedding。講「凍結那一層」時做一個「定住」的手勢。「最不起眼的第一層」可以挑眉、語帶玄機。"),
   dino: N(
-    "再來是 DINO,我個人最愛的一篇。它玩的是「自我蒸餾」:一個 student、一個 teacher,但 teacher 不是另外請的高手,它就是 student 的影分身。student 努力去預測 teacher 的輸出。為了不坍塌,它在 teacher 那邊加了兩個小動作:centering,把輸出拉回中心、不讓某一類獨大;sharpening,把分布變尖銳、逼它做決定。一個拉一個推,剛好卡在中間不塌。重點是,它完全沒有負樣本。但 DINO 最炸的不是分數——是這個。你看它的 attention map:沒有人教它什麼是物體、沒給任何標註,它的注意力居然自己沿著狗、沿著鳥的輪廓亮起來。它無意間學會了「分割物體」。這就是自監督最迷人的「啊哈」時刻。",
+    "再來是 DINO,我個人最愛的一篇。它跟 MoCo v3 一樣都在 ViT 上,但更進一步——連負樣本都不要了。它玩的是「自我蒸餾」:一個 student、一個 teacher,但 teacher 不是另外請的高手,它就是 student 的影分身(一樣用 EMA 慢慢平均得到)。student 努力去預測 teacher 的輸出,loss 是一個交叉熵——讓 student 的輸出機率去逼近 teacher 的那個分布。為了不坍塌,它在 teacher 那邊加了兩個小動作:centering,把輸出拉回中心、不讓某一類獨大;sharpening,把分布變尖銳、逼它做決定。一個拉一個推,剛好卡在中間不塌。重點是,它完全沒有負樣本。但 DINO 最炸的不是分數——是這個。你看它的注意力圖(attention map,模型內部「在看哪裡」的熱力圖):沒有人教它什麼是物體、沒給任何標註,它的注意力居然自己聚焦在整隻狗、整隻鳥的身上、把整塊物體圈出來。它無意間學會了「分割物體」。這就是自監督最迷人的「啊哈」時刻。",
     "翻頁。講完機制後停頓,再切到 attention map 那張圖,指圖上亮起來的物體輪廓。「自己亮起來」放慢、語氣帶驚喜,讓觀眾跟著哇一下。"),
   dinov2: N(
-    "最後一站,DINOv2。它其實沒有發明全新的招式,它做的是另一件更難的事——把對的方法,放大。它把 DINO 的影像級自蒸餾,再加上 iBOT 的 patch 級遮罩學習,然後餵進一個精心篩選、上億張的資料集 LVD-142M,大力出奇蹟。結果就是一個真正通用的「視覺基礎模型」:你拿它的特徵,不用再訓練,直接接到分類、分割、深度估計,各種任務都打得很好。這就把我們整條線,接上了今天大家天天在講的 foundation model 浪潮。所以回頭看這五年——我們從「需要人標每一張圖」,一路走到「不需要標籤、不需要負樣本,只要餵夠多圖,模型自己就長出對世界的理解」。拐杖,一根一根,全丟掉了。",
+    "最後一站,DINOv2。它其實沒有發明全新的招式——架構跟 loss 基本上就是把 DINO 的自蒸餾,再疊上一個叫 iBOT 的 loss:iBOT 把一部分 patch 遮起來、要模型去預測那些被遮位置的 teacher 特徵(等於影像版的「克漏字」,只是要補回來的是特徵、不是像素)。它真正做的是另一件更難的事——把對的方法放大:餵進一個精心篩選、上億張的資料集 LVD-142M,大力出奇蹟。結果就是一個真正通用的「視覺基礎模型」:你拿它的特徵,不用再訓練,直接接到分類、分割、深度估計,各種任務都打得很好。這就把我們整條線,接上了今天大家天天在講的 foundation model 浪潮。所以回頭看這五年——我們從「需要人標每一張圖」,一路走到「不需要標籤、不需要負樣本,只要餵夠多圖,模型自己就長出對世界的理解」。拐杖,一根一根,全丟掉了。",
     "翻頁,這是本段最後一張。講最後「拐杖全丟掉了」時放慢、看向全場做收尾,雙手做一個「攤開、放下」的動作,把這一段落乾淨地交回給主線。"),
   collapseTable: N(
     "好,我們一路從 2018 講到現在,看了十四個方法、四個時代,名字一個比一個酷。但我現在要把整桌菜端走,只留一句話。你們還記得我開場埋的那個伏筆嗎?我說過,整個對比學習最怕的,就是「坍塌」——模型偷懶,把所有圖片都對應到同一個點,loss 漂亮歸零,但表徵一文不值。各位看這張表。我把每一代的代表方法、它用不用負樣本、還有它「靠什麼防坍塌」全列出來。你會發現一件很驚人的事:Era 1 用 memory bank 的大量負樣本把表徵推開;Era 2 的 MoCo、SimCLR 換成 queue 跟大 batch 的負樣本;然後 SwAV 開始叛逆,改用 prototype 加 Sinkhorn 把點均勻分散;到 Era 3,BYOL 跟 SimSiam 乾脆不要負樣本了,靠 EMA、靠 stop-gradient 打破對稱;Barlow Twins 用去相關;DINO 用 centering 加 sharpening。機制全都不一樣,對吧?但是——它們其實都在回答同一個問題。這就是今天的 punchline:十四個方法,本質上都在回答這一句——「沒有標籤,我到底要怎麼樣,才能不讓表徵坍塌?」五年的演化史,說穿了,就是人類想出十四種不同的辦法,去回答這同一個問題。",
@@ -115,6 +115,9 @@ const NOTES = {
   prog2: N(
     "再來看 Era 2 到 Era 3 這三個,重點來了:InfoMin、BYOL、還有 SimSiam。前面那些都還有負樣本當靠山,但 BYOL 跟 SimSiam——記得嗎?它們是完全不用負樣本的那兩個。理論上最容易坍塌的,就是它們。可是你看這兩排演進帶,從 epoch 0 那坨,一樣穩穩地分化成漂亮的群落,完全沒有塌成一個點。這就是眼見為憑:原來光靠 stop-gradient、光靠一個 predictor 加 EMA,真的就能防坍塌。它的分群型態跟 SimCLR 那種對比式的稍微不一樣,但「能分群」這件事,這張圖直接幫它們作證了。",
     "切到第二張演進帶。先指 BYOL、SimSiam 兩排,語氣上揚製造「它們居然沒塌」的驚喜感。可以回頭半秒指一下前一張,做對照。節奏要快,這頁是過場。"),
+  prog3: N(
+    "前面那七條,是我第一批從零訓的。後來我把原本用官方權重展示的六個方法——MoCo v1、v2、SwAV、Barlow Twins,還有搬上 ViT 的 MoCo v3 跟 DINO——也全部從零自己訓了一遍,把整套湊齊。這一頁就是它們的逐-epoch 演進。一樣從 epoch 0 的一坨,全部穩穩分化成清楚的群落;特別是最後那兩排 MoCo v3 跟 DINO,它們底下是 Transformer、之前最怕訓練發散,結果一樣乾乾淨淨分群。到這裡,十三個自監督方法,全部都用親手跑的動畫幫自己作證了。",
+    "切到第三張演進帶。一句話帶出「這六個是後來補訓、湊齊整套」。指最後 MoCo v3、DINO 兩排,強調「連 Transformer 都穩穩分群」。節奏快,這是補完性質的過場頁。"),
   liveDemo: N(
     "好,光看投影片不夠過癮,我們來看現場的。這就是整個 demo 最核心的一張對照圖:左邊是訓練前、隨機初始化的特徵,你看,就是一團毛球,紅紅綠綠全部混在一起,根本分不出來誰是誰——這就是「坍塌」的長相。右邊呢,是充分訓練之後的特徵空間,十個顏色,乾乾淨淨各自成群。從「一團」變「分群」,這就是自監督學習在做的事情,全程沒有用到任何一個標籤。這裡我要特別澄清一個大家很容易誤會的點,這也是我跑完所有實驗最大的體會:「分群分得好不好」,主要看的是——你有沒有「充分訓練」。只要 epoch 夠、訓練到位,幾乎每個方法最後都能把群分出來。那方法之間的差異在哪?差在「架構」跟「loss 怎麼設計」——也就是它用哪一種招式來防坍塌、收斂得多快、需要多大的 batch、要不要負樣本。換句話說,方法的不同,不是「能不能分群」的差別,而是「用什麼代價、走哪條路去防坍塌」的差別。我這邊放了 GIF,我直接讓它跑一次,大家看著那團點,慢慢、慢慢地,散開、歸隊。",
     "切到 LIVE DEMO 頁。先指左邊紅框「訓練前」說「一團毛球」,再指右邊綠框「訓練後」說「分群」,手沿著中間的箭頭由左滑到右。講「充分訓練」時加重、停頓。然後實際播放 GIF/UMAP 動畫,邊播邊用手跟著點群移動,留幾秒讓大家看動畫,不要一直講話蓋過去。"),
@@ -276,7 +279,7 @@ function methodSlide(spec) {
 
   // col3: per-method UMAP demo
   const hasImg = spec.demo && fs.existsSync(spec.demo);
-  const TRAINED = ["instance_discrimination", "invariant_spread", "simclr_v1", "simclr_v2", "infomin", "byol", "simsiam"];
+  const TRAINED = ["instance_discrimination", "invariant_spread", "simclr_v1", "simclr_v2", "infomin", "byol", "simsiam", "moco_v1", "moco_v2", "swav", "barlow_twins", "moco_v3", "dino"];
   const dkey = spec.demo ? spec.demo.split("/").pop().replace(/\.(png|gif)$/, "") : "";
   const isTrained = TRAINED.includes(dkey);
   const isGif = /\.gif$/.test(spec.demo || "");
@@ -509,7 +512,7 @@ actDivider("2", E2, "2020", "大爆發：\n負樣本要從哪裡來？", NOTES.a
 
 // --- MoCo v1 ---
 methodSlide({
-  era: A2("ERA 2 · 2020"), name: "MoCo v1", demo: "demo_assets/methods/moco_v1.png", venue: "CVPR 2020",
+  era: A2("ERA 2 · 2020"), name: "MoCo v1", demo: "demo_assets/gifs/moco_v1.gif", venue: "CVPR 2020",
   authors: "K. He, H. Fan, Y. Wu, S. Xie, R. Girshick — Momentum Contrast for Unsupervised Visual Representation Learning",
   idea: "用動量編碼器 + FIFO queue，提供大量「不過時」的負樣本。",
   mechanism: ["query 編碼器（梯度更新）+ key 編碼器（EMA 動量）", "FIFO queue 儲存歷史 key 當負樣本", "負樣本量與 batch size 解耦"],
@@ -520,7 +523,7 @@ methodSlide({
 
 // --- MoCo v2 ---
 methodSlide({
-  era: A2("ERA 2 · 2020"), name: "MoCo v2", demo: "demo_assets/methods/moco_v2.png", venue: "arXiv 2020",
+  era: A2("ERA 2 · 2020"), name: "MoCo v2", demo: "demo_assets/gifs/moco_v2.gif", venue: "arXiv 2020",
   authors: "X. Chen, H. Fan, R. Girshick, K. He — Improved Baselines with Momentum Contrastive Learning",
   idea: "把 SimCLR 的工程改良搬進 MoCo，用更少資源逼近其表現。",
   mechanism: ["2 層 MLP 投影頭（取代 v1 的線性層）", "加入 Gaussian blur 強增強 + cosine LR", "其餘架構與 v1 完全相同"],
@@ -553,7 +556,7 @@ methodSlide({
 
 // --- SwAV ---
 methodSlide({
-  era: A2("ERA 2 · 2020"), name: "SwAV", demo: "demo_assets/methods/swav.png", venue: "NeurIPS 2020",
+  era: A2("ERA 2 · 2020"), name: "SwAV", demo: "demo_assets/gifs/swav.gif", venue: "NeurIPS 2020",
   authors: "M. Caron, I. Misra, J. Mairal, P. Goyal, P. Bojanowski, A. Joulin — Unsupervised Learning of Visual Features by Contrasting Cluster Assignments",
   idea: "不再兩兩比較，改成線上分群（prototypes）。",
   mechanism: ["multi-crop：2 大 + N 小裁切", "Sinkhorn-Knopp 最佳傳輸求軟分配 code", "swapped prediction：互相預測對方的 code"],
@@ -602,7 +605,7 @@ methodSlide({
 
 // --- Barlow Twins ---
 methodSlide({
-  era: A3("ERA 3 · 2021"), name: "Barlow Twins", demo: "demo_assets/methods/barlow_twins.png", venue: "ICML 2021",
+  era: A3("ERA 3 · 2021"), name: "Barlow Twins", demo: "demo_assets/gifs/barlow_twins.gif", venue: "ICML 2021",
   authors: "J. Zbontar, L. Jing, I. Misra, Y. LeCun, S. Deny — Self-Supervised Learning via Redundancy Reduction",
   idea: "換個哲學：讓兩視角嵌入的互相關矩陣趨近單位矩陣。",
   mechanism: ["計算兩視角嵌入的互相關矩陣 C", "對角→1（不變性）、非對角→0（去冗餘）", "高維投影頭（8192）效果最好"],
@@ -618,7 +621,7 @@ actDivider("4", E4, "2021 → 今天", "架構遷移：\n換上 Transformer", NO
 
 // --- MoCo v3 ---
 methodSlide({
-  era: A4("ERA 4 · 2021"), name: "MoCo v3", demo: "demo_assets/methods/moco_v3.png", venue: "ICCV 2021",
+  era: A4("ERA 4 · 2021"), name: "MoCo v3", demo: "demo_assets/gifs/moco_v3.gif", venue: "ICCV 2021",
   authors: "X. Chen, S. Xie, K. He — An Empirical Study of Training Self-Supervised Vision Transformers",
   idea: "把對比學習搬上 ViT，並找出讓它穩定訓練的配方。",
   mechanism: ["凍結 patch embedding 投影（最關鍵的穩定性修正）", "對稱 in-batch InfoNCE（丟掉 queue）", "AdamW + cosine LR（非 SGD/LARS），m=0.99"],
@@ -629,7 +632,7 @@ methodSlide({
 
 // --- DINO ---
 methodSlide({
-  era: A4("ERA 4 · 2021"), name: "DINO", demo: "demo_assets/methods/dino.png", venue: "ICCV 2021",
+  era: A4("ERA 4 · 2021"), name: "DINO", demo: "demo_assets/gifs/dino.gif", venue: "ICCV 2021",
   authors: "M. Caron, H. Touvron, I. Misra, H. Jégou, J. Mairal, P. Bojanowski, A. Joulin — Emerging Properties in Self-Supervised ViTs",
   idea: "student–teacher 自蒸餾，無對比負樣本。",
   mechanism: ["teacher = student 的 EMA（只看 global crop）", "teacher 輸出做 centering + sharpening", "cross-entropy：student 預測 teacher 分布"],
@@ -681,7 +684,7 @@ methodSlide({
 function progSlide(suffix, rows, notes) {
   const s = pres.addSlide();
   contentHeader(s, "訓練過程", "0E7490", "分群如何隨 epoch 浮現？" + suffix);
-  s.addText("自訓 SSL（CIFAR-10，ResNet-18，2×H100，200 epoch）：特徵從 epoch 0 的「一團」逐步分化成清楚的類別群落。", {
+  s.addText("自訓 SSL（CIFAR-10，ResNet-18 / ViT-S，2×H100，200 epoch）：特徵從 epoch 0 的「一團」逐步分化成清楚的類別群落。", {
     x: 0.7, y: 1.92, w: 11.9, h: 0.4, fontFace: FACE, fontSize: 12.5, color: MUTE, margin: 0 });
   const n = rows.length;
   const top = 2.34, bottom = 6.84, gap = 0.12;
@@ -701,17 +704,25 @@ function progSlide(suffix, rows, notes) {
     x: 3.0, y: 6.9, w: 9.6, h: 0.3, align: "center", fontFace: FACE, fontSize: 10, italic: true, color: MUTE, margin: 0 });
   if (notes) s.addNotes(notes);
 }
-progSlide("（1/2 · Era 1–2）", [
+progSlide("（1/3 · Era 1–2）", [
   { key: "instance_discrimination", label: "Instance Discrim.", sub: "memory bank", c: E1 },
   { key: "invariant_spread", label: "Invariant Spread", sub: "in-batch softmax", c: E1 },
   { key: "simclr_v1", label: "SimCLR v1", sub: "in-batch 對比", c: E2 },
   { key: "simclr_v2", label: "SimCLR v2", sub: "深 3 層投影頭", c: E2 },
 ], NOTES.prog1);
-progSlide("（2/2 · Era 2–3）", [
+progSlide("（2/3 · Era 2–3）", [
   { key: "infomin", label: "InfoMin", sub: "視角設計", c: E2 },
   { key: "byol", label: "BYOL", sub: "predictor + EMA", c: E3 },
   { key: "simsiam", label: "SimSiam", sub: "stop-gradient", c: E3 },
 ], NOTES.prog2);
+progSlide("（3/3 · 官方權重方法自訓補完）", [
+  { key: "moco_v1", label: "MoCo v1", sub: "queue + 動量", c: E2 },
+  { key: "moco_v2", label: "MoCo v2", sub: "MLP 頭 + 強增強", c: E2 },
+  { key: "swav", label: "SwAV", sub: "prototype + Sinkhorn", c: E2 },
+  { key: "barlow_twins", label: "Barlow Twins", sub: "去冗餘", c: E3 },
+  { key: "moco_v3", label: "MoCo v3", sub: "ViT + 凍結 patch", c: E4 },
+  { key: "dino", label: "DINO", sub: "自蒸餾 + centering", c: E4 },
+], NOTES.prog3);
 
 // 16. Live demo
 {
