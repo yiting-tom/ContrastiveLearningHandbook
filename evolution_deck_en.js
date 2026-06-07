@@ -33,101 +33,150 @@ const MONO = "Courier New";  // cross-platform monospace
 const makeShadow = () => ({ type: "outer", color: "000000", blur: 9, offset: 3, angle: 135, opacity: 0.18 });
 const softShadow = () => ({ type: "outer", color: "0E1626", blur: 7, offset: 2, angle: 135, opacity: 0.12 });
 
-// ---------- speaker notes (verbatim spoken script + 🎬 stage cue, one per slide) ----------
-// English mirror of the zh-TW NOTES in evolution_deck.js, so the presenter sees
-// the spoken script in PowerPoint's Notes / Presenter View. Keys map 1:1 to slides.
-const N = (spoken, cue) => `${spoken}\n\n🎬 ${cue}`;
+// ---------- speaker notes (concise talking-point bullets, one per slide) ----------
+// Full verbatim script lives in docs/TALK_SCRIPT.md; these are quick glance bullets.
+const B = (...pts) => pts.map((p) => "• " + p).join("\n");
 const NOTES = {
-  cover: N(
-    "So, let me start with a question. Suppose I hand you a million photos — cats, dogs, cars, houses — but I give you not a single label. Nobody tells you which one is a cat and which is a dog. So how is a model supposed to learn to tell cats from dogs on its own? Sounds a bit magical, right? Like asking a child who has never seen an animal to sort cats and dogs into two piles. But over the next twenty-some minutes, I want to tell you a story — the story of how this field, over five whole years, step by step taught machines to do exactly that. The topic is called contrastive learning.",
-    "Stand center stage, don't rush to advance. Pause a beat on 'not a single label' to let it sink in. After 'tell cats from dogs?' hold about 2 seconds to let the suspense build, then bring up the title."),
-  bigPicture: N(
-    "Before we get into the details, let me hand you a pair of glasses to wear for the whole talk. For five years, this entire field has really been doing just one thing — removing crutches, one after another. What do I mean? At first the model needs a lot of external crutches just to stand; then researchers pull them away one by one, forcing it to stand on its own. We will see four steps. 2018: the first crutch goes — human labels; you can learn without them. 2020: drop a big memory store called the memory bank and use something smarter. 2021: even bolder — they remove negatives themselves, which back then was almost unthinkable. And after 2021, even the underlying architecture gets swapped, from CNN to Transformer. So keep these glasses on: four steps, four crutches. Whatever method you see next, ask yourself one thing — which crutch did this one remove?",
-    "Advance. You can count the four steps on your fingers — 1, 2, 3, 4. Raise your voice and look a little surprised on 'they remove negatives themselves.' Slow down on 'which crutch did it remove?' — make it the refrain for the whole talk."),
-  coreIntuition: N(
-    "OK, so 'learning without labels' — what is the magic? The core intuition is almost embarrassingly simple. Take the same photo of a cat and make two different versions — crop one, recolor or flip the other. To us it is still the same cat; so we tell the model: pull these two close together in feature space. Conversely, a photo of a dog versus my cat — push them apart. Pull together, push apart, over and over, and the model gradually learns to grab whatever stays the same no matter how you crop or distort — that is semantics. That is the secret to telling cats from dogs without labels. But — here is the trap. If I only tell you 'pull the two versions of the same image together,' what is the laziest solution? Map every image in the world to the exact same point! Then 'pull together' is always a perfect score. That disaster has a name: collapse. Remember that word — collapse — it will haunt the rest of this talk like a ghost.",
-    "Advance, point at the pull/push diagram. Use a half-joking tone on 'that's it?'. At the end, lower your voice and slow down on 'collapse' — this is the central tension of the whole talk, so perform it."),
-  infonce: N(
-    "That 'pull together, push apart' — written as math, it is this equation, called InfoNCE. You do not have to memorize it; just read three spots. The numerator is the positive pair — the two views of the same image — we want it large. The denominator is a pile of negatives — different images — we want it small. And there is a little τ, the temperature, that tunes how tight things are. One memory hook: numerator pulls, denominator pushes. Why show you this equation up front? Because all 14 methods coming up are playing with this one equation — either rewriting it, or trying every trick to escape it.",
-    "Advance, point at the numerator then the denominator with your finger or pointer. You can go a bit faster here — method pages, don't drag. Use 'escape it' as the hook into the next page with a tiny pause."),
-  evoMap: N(
-    "Finally, here is a map we will follow. See — laid out left to right are four eras: 2018's dropping labels, 2020's big batches and memory stores, 2021's farewell to negatives, then the Transformer era. These arrows in between matter — they are not just chronology, they are 'who solved whose bottleneck.' The previous method got stuck, hit a problem, and that is why the next one was born. So this is not a pile of scattered papers — it is one cause-and-effect chain of evolution. OK, the story begins for real — let us go back to 2018, where the first crutch, labels, is about to be removed.",
-    "Advance, sweep your hand along the timeline left to right, then tap a few arrows to stress cause and effect. Use the last line 'back to 2018' as the transition into ACT 1 — lift your tone for a sense of takeoff, then pause and hand off to the next page."),
-  act1: N(
-    "OK, the story begins. Rewind to 2018. Back then everyone was stuck on a very basic but annoying problem: I have a huge pile of images, but absolutely no labels — nobody tells me which is a cat, which is a dog. So what is the model supposed to learn? You have to give it a task, right? But where does the task come from? Labels were our biggest crutch, and now that crutch has been pulled away. In Act 1 we will see how people conjured a task out of thin air.",
-    "Walk to center stage, pause a beat before speaking. Spread your hands on 'no labels'; deliberately slow down on 'out of thin air' to build suspense, then cut to the next page."),
-  instance_discrimination: N(
-    "The first answer is clever to the point of being stubborn: since there are no labels, I will just declare — every single image is its own class. A million images, a million classes. The model's job is to tell each image apart from all the others. But there is an engineering problem: you cannot compare against all million every step. So architecturally they used a memory bank — a big lookup table storing each image's feature ahead of time as a ready-made pool of negatives; the loss wants a softmax (in plain terms, the probability of picking the correct one out of a pile of candidates), but with a million candidates the denominator is uncomputable, so they use NCE to approximate it by sampling just a handful of negatives instead of all of them. One memory hook: it treats each image as a class. Its wall is classic too — the features in the bank were computed several rounds ago; the model keeps improving while the bank chews on stale food, so the features go out of date. That staleness is exactly what the next step has to fix.",
-    "Make the 'one image = one class' gesture. Point at the bank box in the diagram on 'memory bank.' Emphasize 'chews on stale food' with a touch of humor."),
-  invariant_spread: N(
-    "The next year, someone said: then let us just drop the bank. Invariant Spread's idea is direct — take two augmentations of one image; these two views should pull together, that is 'invariant'; different images push apart, that is 'spread.' Negatives do not come from any bank — they are the other images in this very batch, computed and used right now, never stale. Architecturally it is just two shared-weight branches — the two views of one image each go down one — and the loss is the opening InfoNCE computed symmetrically, both ways. Versus the previous method, the difference is dropping the memory bank for in-batch negatives (just the other images in this batch). The memory hook: this is the direct ancestor of SimCLR — the core recipe is already here, they just had not cranked up the scale yet. So look — we just dropped labels, and right away we also tossed the memory-bank crutch.",
-    "Use both hands for 'pull together' and 'push apart.' Pause on 'direct ancestor,' look at the audience, plant the seed. End crisply on 'tossed.'"),
-  act2: N(
-    "OK, into Act 2 — and this act is the most exciting fork in the whole story. We had established one thing: for contrastive learning to work, you need many, fresh negatives to push representations apart, or it collapses into a blob. The question is — where do all these negatives come from? In 2020 two camps gave two completely different answers, and it turned into a clash of the titans. One says 'I will store them in a queue,' the other says 'I will just blow up the batch.' Let us look at the first camp.",
-    "Pick up the pace, call out 'the most exciting fork.' On 'two camps,' point left and right with each hand, striking a face-off pose."),
-  moco_v1: N(
-    "The first camp is Kaiming He's team, MoCo. Their insight: negatives do not have to be in this one batch — I can take a FIFO queue — first-in-first-out, new features pushed in, the oldest squeezed out — and line up features from the past several batches as negatives. That decouples the number of negatives from batch size entirely — tiny batch, but still tens of thousands of negatives. But wait — does not that bring back Instance Discrimination's 'stale features' problem? That is their prettiest move: the momentum encoder. The encoder on the negatives side is not updated by gradient — via momentum (i.e. EMA, absorbing just a sliver of the main encoder's update each step) it smoothly catches up, so the features in the queue, though old, stay consistent and do not jump around. The loss is still the opening InfoNCE; only the negatives now come from the queue — that, plus the momentum encoder, is the difference from the previous method. Memory hook: a small batch can still have a huge, consistent pool of negatives.",
-    "Point at the queue box on 'queue.' On 'but wait,' deliberately pause and frown to set up the callback, then reveal the momentum-encoder move."),
-  moco_v2: N(
-    "MoCo v2 is a quick page. No big new theory — the loss and architecture are identical to v1, just a very practical engineering upgrade: take the three good things proven over at SimCLR — the MLP projection head (a small network bolted onto the encoder that projects features into the loss space, used only in training and dropped at evaluation), stronger Gaussian-blur augmentation, and the cosine learning-rate schedule — and drop them straight into MoCo's framework. The result: with small resources and a small batch, it closes in on the TPU-big-batch SimCLR. Memory hook: good ideas get borrowed, shamelessly. This also previews the rival we are about to meet.",
-    "Light, smiling tone. Be playful on 'borrowed.' Gesture toward the next page."),
-  simclr_v1: N(
-    "OK, the other camp steps up — Hinton's team, SimCLR, with the exact opposite philosophy. They say: why bother with queues and momentum? Too much hassle. I will just blow the batch up huge — so big that within this one batch there are thousands of negatives to compare against, no need to store history. The architecture is dead simple: two shared-weight branches each with an MLP projection head, and the loss is called NT-Xent — scary name, but it is just the opening InfoNCE with the features L2-normalized first. But they found one key thing — strong augmentation is the real soul, especially fierce color jitter plus Gaussian blur; without it the whole thing will not learn. The memory hook, and its pain point: for this path to work you need a TPU-scale batch, which ordinary labs simply cannot afford. So you see, the MoCo-versus-SimCLR fight is, at heart, the same question — where do negatives come from — answered by two philosophies: one saves memory with a queue, the other brute-forces it with batch size.",
-    "Step up with a stronger tone, like introducing a rival. Mimic a dismissive look on 'too much hassle.' At the end, contrast the two camps side by side, one hand per camp, for a summary gesture."),
-  simclr_v2: N(
-    "SimCLR v2 is the same path, leveled up — the loss never changes, still NT-Xent — and the only theme is scale. Two changes: the projection head goes from two layers to three, and the backbone is swapped for a bigger, deeper model. What it really wants to prove is fascinating — big self-supervised models are very strong semi-supervised learners: first pretrain a big model on tons of unlabeled data, then fine-tune with a tiny bit of labels, and finally distill into a small model (distillation = let the trained big model act as a teacher and teach a small one, compressing the ability into it). Memory hook: the bigger the model, the more it can squeeze out of unlabeled data.",
-    "Gesture 'deeper, bigger.' On 'just a tiny bit of labels,' pinch your thumb and finger into a small gap."),
-  swav: N(
-    "By now some people start to feel 'pairwise comparison' is itself clunky. SwAV jumps in: I will not compare image to image one-on-one anymore. I set up a group of prototypes — think of them as learnable cluster centers; each image computes which clusters it is closest to, getting an 'assignment' (also called a code). The loss is different too — not InfoNCE, but swapped prediction: take one view's features and predict the OTHER view's cluster assignment, guessing each other's both ways, using cross-entropy. The trick is it uses the Sinkhorn algorithm to force these assignments to spread evenly across the clusters — no piling everyone into one cluster — and that step itself prevents collapse. Add multi-crop — one image cut into two big plus several small crops — and you get a bunch of extra views basically for free. The most important memory hook: it needs no pairwise negatives at all. Wait — no negatives and still no collapse? That line points us straight to the final suspense.",
-    "Draw a few cluster centers in the air on 'prototypes.' Slow down and lift your tone on 'no negatives and still no collapse?' — make it a deliberate hook."),
-  infomin: N(
-    "Before closing this act, InfoMin asks a very philosophical but crucial question. First, how it differs from before: it reuses SimCLR's backbone and NT-Xent, and the only thing it touches is the views you feed in. While everyone else was grinding on negatives and architectures, it steps back and asks: we keep pulling two augmented views together — but what actually makes a 'good' view? Its answer is minimal sufficient: between the two views, keep all the shared semantics (sufficient), but cut the unshared stuff — shortcuts like color and texture — as much as possible (minimal). How to cut? Use more aggressive augmentation to destroy those shortcuts, so the model cannot cheat. Memory hook: sometimes the bottleneck is not the loss or the architecture — it is the very 'views' you feed in. OK, that wraps Act 2. We saw negatives played a hundred ways, but SwAV already quietly hinted — negatives are not the only answer. And if we push that thought to the extreme — drop even a single negative? See you in the next act.",
-    "Lean back slightly on 'step back and ask,' a thinking pose. Slow down and stress the last three sentences; after 'drop even a single negative?', hold two seconds, then cut to the transition."),
-  act3: N(
-    "OK, we are at the wildest act of the whole story. We have been removing crutches all along: first human labels, then the giant batch, then that memory queue. But one crutch — from day one until now — nobody dared touch: negatives. What are negatives for? They are the 'push apart' force. The spirit of contrastive learning is one line: pull yourself together, push others apart. So what if I remove 'push others apart' entirely? Think about it — if only 'pull together' is left, with no 'push,' what is the model's smartest cheat? Map everything to the same point — every image looks identical, the loss drops straight to zero, job perfectly done. That is the nightmare we have feared all along: collapse. So back then the consensus was: no negatives, guaranteed collapse. No exceptions. Remember that consensus — because the next few papers are here to smack it down.",
-    "Walk to center stage, pause for a ceremonial beat. Slow down and stress 'no negatives, guaranteed collapse,' hold 1 second, then advance. You can make a 'push apart' then 'shrink to a dot' gesture."),
-  byol: N(
-    "The first to jump out is BYOL. It flatly says: I want no negatives, not even one. The whole field waited for it to collapse. How does it work? Two branches, one called online, one called target. Here is the key: the online side specifically adds a small network called a predictor, deliberately making the two branches asymmetric; and the target does not learn on its own — it is a 'slow-motion clone' of online, catching up via momentum (EMA, slowly averaging past weights), with the gradient cut off on the target side. The loss is swapped out from contrastive entirely — it does not push anyone apart; instead online, through the predictor, predicts the target's features and pulls the two together (using MSE, mean-squared error). The biggest difference from everything before: it has not a single negative. The result? It just does not collapse, and it works shockingly well. Everyone's first reaction was 'there must be a bug somewhere.' One memory hook: it holds up without collapsing by relying on asymmetry, not on pushing apart. The negative-sample crutch is dropped for the first time.",
-    "Turn to the BYOL page, point at the small predictor box. Gesture on 'slow-motion clone.' Stress 'doesn't collapse' with a surprised look to spark the audience's curiosity."),
-  simsiam: N(
-    "After BYOL everyone breathed easier, figuring 'ah, it is that momentum EMA secretly preventing collapse.' Then Kaiming He's team comes out and says: no, you are all overthinking it. SimSiam cuts the momentum EMA too — the two branches just share the same network, no clone, no queue, nothing — the architecture is even leaner than BYOL, the difference being it drops even the EMA target, keeping only the predictor and that one cut. So what keeps it from collapsing? One single move — stop-gradient, the gradient stops on the target side and does not flow back. The loss is negative cosine similarity (just align the two sides' feature directions as closely as possible). That is it. It is basically a minimalist experiment: strip everything away, leave one thing, and point at it: look, the real key to preventing collapse, from start to finish, is this stop-gradient. Clean, elegant, straight to the point.",
-    "Advance. Make repeated 'deleting' gestures on 'strip everything.' On stop-gradient, point at the ⊘ stop symbol in the diagram, hold half a second, stress 'just this one.'"),
-  barlow_twins: N(
-    "Barlow Twins is even more interesting — it does not play pull-and-push with you anymore, it swaps in a whole new philosophy. Architecturally it is still two shared-weight branches, just with a very wide projection head behind them (over eight thousand dimensions, which matters a lot here). It says: I will look at the cross-correlation matrix between the two views' embeddings — in plain terms, measuring how correlated each pair of feature dimensions across the two sides is, laid out in a square table. You just force this matrix toward the identity — diagonal to 1, meaning the two views of the same image should agree; off-diagonal squeezed to 0, meaning each dimension should not repeat another, should not say the same thing. This is called redundancy reduction. The amazing part: no negatives, no EMA, no predictor — all the work is in the loss. So versus the SimSiam we just saw, it does not even need that stop-gradient cut — SimSiam breaks symmetry with stop-gradient, Barlow Twins instead forces the cross-correlation matrix to decorrelate right in the loss, a completely different route. So at this point, putting the three papers together, a common thread appears: the key to preventing collapse was never 'pushing others apart,' it is 'breaking symmetry.' Whether you use a predictor, a stop-gradient, or force the cross-correlation matrix to decorrelate, it is essentially the same thing — do not let the two sides collapse into the exact same thing. That is the line Act 3 leaves us with.",
-    "Advance, point at the loss formula C→I. Slow down on the closing line 'breaking symmetry,' look across the room — this is the act's conclusion, let it land."),
-  act4: N(
-    "OK, by now we have stripped away nearly every crutch: labels, big batch, queue, negatives — one by one. But one thing never changed — the engine underneath has always been a CNN, a ResNet. Meanwhile a major earthquake was hitting vision: the Transformer arrived, the ViT appeared. So the question is: if I swap the entire engine under contrastive learning to a Transformer, what happens? A painless plug-in, or a new kind of collapse blowing up? Our final act is about how this crowd tamed the new engine and rode it all the way to today's foundation models.",
-    "Walk back to center stage. Shift to a 'final act' wrap-up tone. Pause on 'swap to a Transformer,' toss out the suspense, then advance."),
-  moco_v3: N(
-    "The first to brave it is MoCo v3. It puts contrastive learning straight onto a ViT — the architecture is still basically MoCo's query/key two encoders, the difference being the backbone swapped from ResNet to a Transformer. And right away in training: super unstable, the loss suddenly spikes, and halfway through the whole thing falls apart. The team hunted for a long time and finally caught a deeply counterintuitive culprit — the very first layer, the patch embedding, the layer that chops the image into patches and projects them into vectors. Their fix is almost absurdly simple: just freeze that layer, do not train it. Freeze it, and the whole thing stabilizes. While they were at it, they also tossed the memory queue, and the loss goes back to SimCLR's symmetric in-batch InfoNCE. Memory hook: sometimes the key to stability is not where you frantically tune — it is the most inconspicuous first layer.",
-    "Advance, point at the patch embedding at the bottom of the diagram. Make a 'lock it down' gesture on 'freeze that layer.' You can raise an eyebrow, with a knowing tone, on 'the most inconspicuous first layer.'"),
-  dino: N(
-    "Next is DINO, my personal favorite. Like MoCo v3 it is on a ViT, but it goes one step further — it drops negatives entirely. It plays 'self-distillation': a student and a teacher — but the teacher is not some hired expert, it is the student's own clone (likewise obtained by slowly EMA-averaging the student). The student works to predict the teacher's output, and the loss is a cross-entropy — making the student's output distribution approach the teacher's. To avoid collapse, it adds two small moves on the teacher side: centering, pulling the output back to center so no single class dominates; and sharpening, making the distribution sharper to force a decision. One pulls, one pushes, balanced right in the middle so it does not collapse. The key point: it has no negatives at all. But DINO's most stunning part is not the score — it is this. Look at its attention map (the heatmap of where the model is looking inside): nobody taught it what an object is, no annotations given, yet its attention focuses on the whole dog, the whole bird, framing the entire object by itself. It inadvertently learned to 'segment objects.' That is the most enchanting 'aha' moment in self-supervised learning.",
-    "Advance. After the mechanism, pause, then switch to the attention-map image and point at the object outlines lighting up. Slow down and sound delighted on 'lights up by itself,' so the audience goes 'wow' with you."),
-  dinov2: N(
-    "Last stop, DINOv2. It did not invent a brand-new trick — its architecture and loss are basically DINO's self-distillation plus one extra loss called iBOT: iBOT masks out some patches and asks the model to predict those masked positions' teacher features (an image-version fill-in-the-blank, except what is filled back in is features, not pixels). What it really did is something harder — take the right method and scale it up: feed it a carefully curated dataset of over a hundred million images, LVD-142M — brute force, miracle. The result is a truly general visual foundation model: take its features, no further training, plug straight into classification, segmentation, depth estimation — it does great on all of them. That connects our whole thread to the foundation-model wave everyone talks about today. So looking back over these five years — we went from 'needing a human to label every image' all the way to 'no labels, no negatives, just feed it enough images and the model grows its own understanding of the world.' The crutches, one by one, are all gone.",
-    "Advance, the last page of this section. Slow down on the final 'the crutches are all gone,' look across the room for the wrap, with a 'spreading out, setting down' gesture, handing this section cleanly back to the main thread."),
-  dinov3: N(
-    "One more, a 2025 coda: DINOv3, again from Meta. It is the same line as DINOv2 — architecture and loss almost identical, DINO + iBOT self-distillation — the difference is two things. First, scale exploded again: the teacher goes up to 7 billion parameters, fed 1.7 billion images. Second, it adds a trick called Gram anchoring, which fixes an old problem: after very long training the patch-level dense features slowly degrade and blur, and Gram anchoring keeps them stable. The result is another leap on dense tasks — segmentation, depth, finding correspondences — where a single frozen backbone, no fine-tuning, beats a pile of specially-trained models. The UMAP on the right is its official weights' features on CIFAR-10 — look how cleanly it separates. So the DINO self-distillation line, from v1 to v3, is really one idea scaled up and up, pushing the general visual foundation model to new heights.",
-    "Switch to the DINOv3 page. In one line, position it as 'DINOv2 scaled up + Gram anchoring.' Point at the official-weights UMAP on the right, stress how cleanly it clusters. This is a bonus/coda page — keep it brisk; if short on time, skip it with one line: 'DINOv3 pushed the scale even further.'"),
-  collapseTable: N(
-    "OK, we have gone from 2018 to now, fourteen methods, four eras, each name cooler than the last. But I am going to clear the whole table and leave just one sentence. Remember the seed I planted at the start? I said the thing contrastive learning fears most is collapse — the model cheating by mapping every image to the same point, loss beautifully zero, but the representation worthless. Look at this table. I have listed each era's representative method, whether it uses negatives, and what it relies on to prevent collapse. You will notice something striking: Era 1 used the memory bank's many negatives to push representations apart; Era 2's MoCo and SimCLR switched to queue and big-batch negatives; then SwAV got rebellious and used prototypes plus Sinkhorn to spread points evenly; by Era 3, BYOL and SimSiam just dropped negatives, relying on EMA and stop-gradient to break symmetry; Barlow Twins used decorrelation; DINO used centering plus sharpening. The mechanisms are all different, right? But — they are all answering the same question. That is today's punchline: fourteen methods, all essentially answering this one line — 'without labels, how do I keep the representation from collapsing?' Five years of evolution, in a nutshell, is humanity coming up with fourteen different ways to answer this one question.",
-    "Pause a beat before speaking, callback to the opening. Make a 'squeeze everything into one ball' gesture on 'collapse.' Point row by row at the last column (anti-collapse mechanism) so everyone sees they differ. Slow down and stress the final punchline, circling the bottom line 'without labels, how to avoid collapse?' with your pointer."),
-  prog1: N(
-    "After all that theory, you might think: OK, sounds fancy, but what does 'successfully preventing collapse' actually look like? These I ran myself. On the school's two H100s, with CIFAR-10 and ResNet-18, I trained from scratch for two hundred epochs, then took a UMAP snapshot of the features at several epochs and strung them into this evolution strip. First, these four from Era 1 to Era 2: Instance Discrimination, Invariant Spread, SimCLR v1, SimCLR v2. Look at the far left — epoch 0, random init, just one blob, all ten classes smeared together; that is literally 'the starting point of collapse.' Then look right — as training goes, same-class points gather, different classes get pushed apart, and by the far right, epoch 200, you can see clear clusters. Notice the two SimCLR rows — they cluster noticeably faster and cleaner, with sharper boundaries; that is the power of in-batch contrast with lots of positives and negatives. Without a single label, purely from the signal 'two views of one image should match, different images should not,' it forces the structure out.",
-    "Switch to the first evolution strip. With your pointer, sweep from the epoch-0 blob on the left rightward to the epoch-200 clusters, with a 'blob → spread → cluster' gesture. Point specifically at the two SimCLR rows on 'faster and cleaner.' A touch of 'I ran this myself' pride."),
-  prog2: N(
-    "Now the three from Era 2 to Era 3, and here is the point: InfoMin, BYOL, and SimSiam. The earlier ones still had negatives to lean on, but BYOL and SimSiam — remember? — are the two that use no negatives at all. In theory the most prone to collapse. Yet look at these two strips — from the epoch-0 blob, they steadily differentiate into beautiful clusters too, never collapsing to a point. That is seeing-is-believing: just stop-gradient, just a predictor plus EMA, really can prevent collapse. Their cluster shapes look a little different from SimCLR's contrastive style, but 'they can cluster' — this figure vouches for them directly.",
-    "Switch to the second evolution strip. Point at the BYOL and SimSiam rows first, lift your tone for the 'they actually didn't collapse' surprise. You can glance back at the previous strip for half a second to compare. Keep the pace quick — this is a transition page."),
-  prog3: N(
-    "Those first seven were the first batch I trained from scratch. Later I also trained, from scratch, the six methods I'd originally shown with official weights — MoCo v1, v2, SwAV, Barlow Twins, plus MoCo v3 and DINO on a ViT — to complete the set. This page is their per-epoch evolution. Same story — from the epoch-0 blob, all of them differentiate cleanly into clear clusters; especially the last two rows, MoCo v3 and DINO, which sit on a Transformer and were the most prone to diverging, yet cluster just as cleanly. At this point, all thirteen self-supervised methods have vouched for themselves with animations I ran by hand.",
-    "Switch to the third evolution strip. In one line, note these six were 'trained later to complete the set.' Point at the last two rows, MoCo v3 and DINO: 'even the Transformers cluster cleanly.' Keep it quick — a completeness transition page."),
-  liveDemo: N(
-    "OK, slides alone are not satisfying enough — let us see it live. This is the single most important comparison of the whole demo: on the left, the features before training, randomly initialized — see, just a ball of fuzz, reds and greens all mixed, you cannot tell who is who; that is what collapse looks like. On the right, the feature space after full training — ten colors, cleanly separated into their own clusters. From one blob to clear clusters — that is what self-supervised learning does, with no labels used the entire time. Here I want to clear up a common misconception, which is also my biggest takeaway from running all these experiments: how well it clusters mainly comes down to — whether you trained enough. As long as the epochs are sufficient and training is on track, almost every method can eventually separate the clusters. So where is the difference between methods? In the architecture and how the loss is designed — that is, which trick it uses to prevent collapse, how fast it converges, how big a batch it needs, whether it needs negatives. In other words, the difference between methods is not 'can it cluster,' it is 'at what cost, and via which path, does it prevent collapse.' I have put a GIF here — let me just run it once; watch that ball of points slowly, slowly spread out and fall into line.",
-    "Switch to the LIVE DEMO page. Point at the red box on the left, 'before training,' say 'ball of fuzz'; then the green box on the right, 'after training,' say 'clusters'; slide your hand along the arrow in the middle left to right. Stress and pause on 'trained enough.' Then actually play the GIF/UMAP animation, following the moving points with your hand, leaving a few seconds for people to watch — don't talk over it."),
-  closing: N(
-    "OK, let us wrap up. If you take just one sentence from this talk, I hope it is this: for five years, contrastive learning has been doing one thing — removing dependencies. From needing the memory-bank crutch at first, to dropping negatives later, to finally swapping out even the CNN architecture for a Transformer. Step by step, taking away every external crutch. Three takeaways for you. First, all methods really share the same InfoNCE intuition — pull positives together, push negatives apart; however fancy the names, at the core it is this. Second, and this is what I most want to stress: the real challenge from start to finish is preventing collapse; negatives are just one solution, not the only path. Third, the overall trend: fewer and fewer assumptions, larger and larger scale, all the way to today's foundation models. Finally, a quick plug — all fourteen methods I covered today, I have implemented as an open-source teaching project, one unified codebase, every loss readable on its own and runnable yourself; you can reproduce those H100 results too. Feel free to clone it and play. Thank you all for listening — and now, questions are welcome!",
-    "Switch to the closing page. Slow down and weight the line 'removing dependencies' the most — it's the thesis of the whole talk. Point at the on-screen 1, 2, 3 dots for the three takeaways. Point at the bottom line (or show a GitHub QR/link) for the open-source project. On the final 'questions welcome,' face the room, smile, open your arms slightly, and move into Q&A."),
+  cover: B(
+    "Opener: a million photos, not one label — how does a model learn cats vs dogs on its own?",
+    "Topic: contrastive learning; next ~20 min = its 5-year evolution story"),
+  bigPicture: B(
+    "Glasses for the whole talk: 5 years doing one thing — removing crutches",
+    "Four steps: 2018 drop labels → 2020 drop the memory bank → 2021 drop negatives → 2021+ swap in Transformer",
+    "Refrain: for each method ask 'which crutch did it remove?'"),
+  coreIntuition: B(
+    "Core intuition: two augments of one image = pull together; different images = push apart",
+    "Learn what stays the same under augmentation = semantics",
+    "Trap: pull-only with no push → everything collapses to one point = collapse (the villain)"),
+  infonce: B(
+    "Write pull/push as math = InfoNCE",
+    "Three spots: numerator = positives (large), denominator = negatives (small), tau = temperature",
+    "Hook: numerator pulls, denominator pushes",
+    "All 14 methods are variations on (or escapes from) this one equation"),
+  evoMap: B(
+    "One map, four eras — we follow it",
+    "Arrows = who solved whose bottleneck, not just chronology",
+    "A causal evolution chain, not scattered papers"),
+  act1: B(
+    "Back to 2018: piles of images, no labels — what is the model to learn?",
+    "Labels were the biggest crutch, now pulled away",
+    "Act 1: how people conjured a task out of thin air"),
+  instance_discrimination: B(
+    "Idea: every image is its own class (a million images = a million classes)",
+    "Architecture: one encoder + a memory bank (stores all features as negatives)",
+    "Loss: softmax is uncomputable → NCE approximates it by sampling",
+    "Wall: bank features go stale (the next step fixes this)"),
+  invariant_spread: B(
+    "Drop the bank, stay in-batch: same image pull (invariant), different images push (spread)",
+    "Architecture: two shared-weight branches; loss: symmetric InfoNCE",
+    "Diff vs previous: drops the memory bank for in-batch negatives",
+    "It is the direct ancestor of SimCLR"),
+  act2: B(
+    "Act 2 = the big fork: where do negatives come from?",
+    "Two camps clash: store them in a queue, or blow up the batch"),
+  moco_v1: B(
+    "Kaiming He's team: a FIFO queue stores past features as negatives",
+    "Negatives decoupled from batch size (tiny batch, still tens of thousands)",
+    "Key move: momentum encoder (EMA catches up slowly) → queue stays consistent",
+    "Loss is still InfoNCE; only negatives now come from the queue"),
+  moco_v2: B(
+    "Same loss/architecture as v1, pure engineering upgrade",
+    "Borrows three things from SimCLR: MLP head, Gaussian blur, cosine LR",
+    "Result: near-SimCLR on a small budget"),
+  simclr_v1: B(
+    "Hinton's team, opposite philosophy: no queue, just a huge batch",
+    "Architecture: two shared branches + MLP head; loss: NT-Xent (= InfoNCE with L2-normalized features)",
+    "Key: strong augmentation (color jitter + Gaussian blur) is the soul",
+    "Pain point: needs a TPU-scale batch"),
+  simclr_v2: B(
+    "Same path, leveled up — loss unchanged, theme is scale",
+    "Changes: 3-layer projection head + bigger backbone",
+    "Proves big SSL models are strong semi-supervised learners (pretrain → tiny labels → distill)"),
+  swav: B(
+    "No more pairwise comparison — online clustering with prototypes",
+    "Loss: swapped prediction (cross-entropy) — one view predicts the other's assignment",
+    "Sinkhorn forces assignments to spread evenly → itself prevents collapse",
+    "Multi-crop = free extra views; key: no pairwise negatives needed"),
+  infomin: B(
+    "Architecture/loss reuse SimCLR — only the views change",
+    "Asks: what makes a good view? Answer: minimal sufficient (keep semantics, cut shortcuts)",
+    "More aggressive augmentation destroys color/texture shortcuts",
+    "Closes the act: SwAV hinted negatives are not the only answer → next act drops them entirely"),
+  act3: B(
+    "The wildest act: remove the last crutch — negatives",
+    "Negatives = the push force; pull-only is most likely to collapse to a point",
+    "Old consensus: no negatives = guaranteed collapse (about to be debunked)"),
+  byol: B(
+    "No negatives, not even one",
+    "Architecture: online + target branches; online adds a predictor (creates asymmetry)",
+    "Target = EMA clone of online + stop-gradient",
+    "Loss: predictor predicts the target's features via MSE (not pushing apart)",
+    "Prevents collapse via asymmetry, not pushing — shocked the field"),
+  simsiam: B(
+    "Cut further: drop even the EMA, both branches share one network",
+    "Keep only predictor + stop-gradient; loss = negative cosine similarity",
+    "Minimal proof: stop-gradient is the real key to preventing collapse"),
+  barlow_twins: B(
+    "New philosophy: not pull/push — look at the cross-correlation matrix of the two views",
+    "Goal: drive it to the identity (diagonal 1 = invariance, off-diagonal 0 = decorrelation)",
+    "Wide projection head (8192); no negatives/EMA/predictor — all in the loss",
+    "Thread across the 3 papers: the key is breaking symmetry, not pushing apart"),
+  act4: B(
+    "Crutches nearly all gone, but the engine was always a CNN",
+    "Meanwhile the ViT arrives; what if we swap the engine to a Transformer?",
+    "Final act: taming the new engine, all the way to foundation models"),
+  moco_v3: B(
+    "Architecture = MoCo on a ViT (backbone ResNet → Transformer)",
+    "Problem: very unstable, loss spikes",
+    "Culprit = the first patch-embedding layer; fix: freeze it and it stabilizes",
+    "Also drops the queue; loss back to symmetric in-batch InfoNCE"),
+  dino: B(
+    "Same ViT as MoCo v3, but goes further: no negatives at all",
+    "Self-distillation: student learns teacher (teacher = EMA of student); loss = cross-entropy",
+    "Anti-collapse: centering (recenter) + sharpening on the teacher",
+    "Stunner: attention map frames whole objects (emergent segmentation, no labels)"),
+  dinov2: B(
+    "No new trick — does the harder thing: scale the right method up",
+    "Architecture/loss = DINO + iBOT (patch masking, predicts features not pixels)",
+    "Feed LVD-142M (100M+ curated) → a general visual foundation model",
+    "Features need no training, plug into classification/segmentation/depth"),
+  dinov3: B(
+    "2025 coda, same line as DINOv2 (architecture/loss almost identical)",
+    "Diff 1: scale explodes again (7B params / 1.7B images)",
+    "Diff 2: Gram anchoring keeps dense features stable, no degradation",
+    "Another leap on dense tasks; the UMAP on the right = official weights on CIFAR-10",
+    "DINO line v1 → v3 = one idea scaled up and up"),
+  collapseTable: B(
+    "Callback to the opening seed: collapse is the real fear",
+    "Table: per era, do they use negatives + what prevents collapse",
+    "Mechanisms all differ (negatives / Sinkhorn / EMA / stop-grad / decorrelation / centering)",
+    "Punchline: all 14 answer one question — without labels, how to avoid collapse"),
+  prog1: B(
+    "From theory to real runs: 2xH100, CIFAR-10, 200 epochs, a UMAP per epoch",
+    "Era 1–2 four: epoch 0 is one blob (collapse start) → gradually clusters",
+    "SimCLR clusters faster/cleaner (power of in-batch positives + negatives)",
+    "Purely from 'same image alike, different unalike' — zero labels"),
+  prog2: B(
+    "Era 2–3: InfoMin, BYOL, SimSiam",
+    "Point: BYOL/SimSiam use no negatives — in theory the most collapse-prone",
+    "Yet they cluster cleanly, never collapse to a point → seeing is believing",
+    "stop-gradient and predictor+EMA really do prevent collapse"),
+  prog3: B(
+    "Completion: the 6 official-weight methods, also trained from scratch",
+    "MoCo v1/v2, SwAV, Barlow, MoCo v3, DINO",
+    "Even the two ViTs (most prone to diverge) cluster cleanly",
+    "All 13 self-trained methods now proven on screen"),
+  liveDemo: B(
+    "Core comparison: left = pre-training fuzz ball (what collapse looks like), right = clean clusters",
+    "No labels used at any point",
+    "Biggest takeaway: clustering quality mainly comes down to enough training",
+    "Method difference isn't 'can it cluster' but 'at what cost / which path to prevent collapse'",
+    "Play the GIF; leave a few seconds to watch points spread and settle"),
+  closing: B(
+    "One takeaway: for 5 years contrastive learning kept removing dependencies",
+    "Three points: (1) shared InfoNCE intuition (2) the real challenge is preventing collapse, negatives are just one path (3) trend: fewer assumptions, larger scale → foundation models",
+    "Open-source teaching project: 14 methods, unified + reproducible — clone it",
+    "Thanks; into Q&A"),
 };
 
 // ---------- reusable bits ----------
