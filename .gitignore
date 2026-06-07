@@ -47,3 +47,6 @@ server_pkg/*.tgz
 
 # Office lock/temp files
 ~$*
+
+# downloaded reference papers (copyrighted; keep out of the public repo)
+papers/

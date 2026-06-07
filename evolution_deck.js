@@ -106,6 +106,9 @@ const NOTES = {
   dinov2: N(
     "最後一站,DINOv2。它其實沒有發明全新的招式——架構跟 loss 基本上就是把 DINO 的自蒸餾,再疊上一個叫 iBOT 的 loss:iBOT 把一部分 patch 遮起來、要模型去預測那些被遮位置的 teacher 特徵(等於影像版的「克漏字」,只是要補回來的是特徵、不是像素)。它真正做的是另一件更難的事——把對的方法放大:餵進一個精心篩選、上億張的資料集 LVD-142M,大力出奇蹟。結果就是一個真正通用的「視覺基礎模型」:你拿它的特徵,不用再訓練,直接接到分類、分割、深度估計,各種任務都打得很好。這就把我們整條線,接上了今天大家天天在講的 foundation model 浪潮。所以回頭看這五年——我們從「需要人標每一張圖」,一路走到「不需要標籤、不需要負樣本,只要餵夠多圖,模型自己就長出對世界的理解」。拐杖,一根一根,全丟掉了。",
     "翻頁,這是本段最後一張。講最後「拐杖全丟掉了」時放慢、看向全場做收尾,雙手做一個「攤開、放下」的動作,把這一段落乾淨地交回給主線。"),
+  dinov3: N(
+    "再補一個 2025 的續章:DINOv3,一樣是 Meta。它跟 DINOv2 是同一條路——架構、loss 幾乎一模一樣,都是 DINO + iBOT 自蒸餾——差別在兩件事。第一,規模又往上爆:teacher 拉到 70 億參數、餵 17 億張影像。第二,加了一招 Gram anchoring,專門解一個老問題:模型訓練很久之後,patch 級的 dense 特徵會慢慢退化、變糊,Gram anchoring 就是去把它穩住。結果就是它在分割、深度、找對應點這種 dense 任務上又上一層樓——凍結 backbone、完全不微調,單一模型就打贏一票專門訓練的模型。右邊這張 UMAP,就是它官方權重在 CIFAR-10 上抽出來的特徵,你看分得多乾淨。所以 DINO 這條自蒸餾線,從 v1 到 v3,其實就是同一個點子不斷放大、把通用視覺基礎模型一路推到新高度。",
+    "切到 DINOv3 頁。一句話定位「DINOv2 的放大版 + Gram anchoring」。指右邊官方權重 UMAP,強調分群乾淨。這是補充/續章頁,節奏明快;若時間不夠,可整頁略過、只留一句『DINOv3 又把規模推得更大』。"),
   collapseTable: N(
     "好,我們一路從 2018 講到現在,看了十四個方法、四個時代,名字一個比一個酷。但我現在要把整桌菜端走,只留一句話。你們還記得我開場埋的那個伏筆嗎?我說過,整個對比學習最怕的,就是「坍塌」——模型偷懶,把所有圖片都對應到同一個點,loss 漂亮歸零,但表徵一文不值。各位看這張表。我把每一代的代表方法、它用不用負樣本、還有它「靠什麼防坍塌」全列出來。你會發現一件很驚人的事:Era 1 用 memory bank 的大量負樣本把表徵推開;Era 2 的 MoCo、SimCLR 換成 queue 跟大 batch 的負樣本;然後 SwAV 開始叛逆,改用 prototype 加 Sinkhorn 把點均勻分散;到 Era 3,BYOL 跟 SimSiam 乾脆不要負樣本了,靠 EMA、靠 stop-gradient 打破對稱;Barlow Twins 用去相關;DINO 用 centering 加 sharpening。機制全都不一樣,對吧?但是——它們其實都在回答同一個問題。這就是今天的 punchline:十四個方法,本質上都在回答這一句——「沒有標籤,我到底要怎麼樣,才能不讓表徵坍塌?」五年的演化史,說穿了,就是人類想出十四種不同的辦法,去回答這同一個問題。",
     "停頓一拍再開講,回扣開場。講到「坍塌」時用手做一個「全部擠成一團」的手勢。逐行指表格最後一欄(防坍塌機制),讓大家看到機制各不同。講最後一句 punchline 時放慢、加重,並用雷射筆圈住底部那行「沒有標籤,怎麼不讓表徵坍塌?」"),
@@ -650,6 +653,17 @@ methodSlide({
   contribution: "免微調即強的通用特徵，foundation model 的前身。",
   diagram: (s, o) => siamese(s, o, { top: "student\nf_s", bot: "teacher\nf_ξ", botNote: "EMA", proj: true, sgBot: true, loss: "DINO\n+ iBOT", extra: "iBOT\n(patch 級遮罩)" }),
   loss: "ℒ_DINO + ℒ_iBOT + 正則項", lossNote: "影像級 + patch 級自蒸餾，規模化",
+});
+
+// --- DINOv3 (2025 續章) ---
+methodSlide({
+  era: A4("ERA 4 · 2025"), name: "DINOv3", demo: "demo_assets/methods/dinov3.png", venue: "arXiv 2025",
+  authors: "O. Siméoni, H. V. Vo, et al. (Meta AI) — DINOv3",
+  idea: "同一條 DINO 路線再往上推到極限規模，並用 Gram anchoring 穩住 dense 特徵。",
+  mechanism: ["沿用 DINO + iBOT 自蒸餾，放大到 7B 參數 / 17 億張影像", "Gram anchoring：訓練後期穩住 patch 級 dense 特徵、防退化", "再從巨模型蒸餾出 ViT-S/B/L 等好用的小模型"],
+  contribution: "凍結 backbone 的 dense 特徵達 SOTA；免微調就打贏專用模型。",
+  diagram: (s, o) => siamese(s, o, { top: "student\nf_s", bot: "teacher\nf_ξ", botNote: "EMA", proj: true, sgBot: true, loss: "DINO+iBOT\n+Gram", extra: "Gram\nanchoring" }),
+  loss: "ℒ_DINO + ℒ_iBOT + ℒ_Gram", lossNote: "自蒸餾 + Gram anchoring 穩住 dense 特徵",
 });
 
 // 15. Comparison / collapse payoff table

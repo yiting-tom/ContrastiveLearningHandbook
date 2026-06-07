@@ -302,6 +302,28 @@ def run_dinov2() -> None:
     plot(feats, labs, OUT / "dinov2.png")
 
 
+def run_dinov3() -> None:
+    """DINOv3 (Meta 2025) official gated weights via HuggingFace transformers.
+    Requires accepting the DINOv3 license + `huggingface-cli login`."""
+    print("\n=== dinov3 (OFFICIAL gated weights via HF) ===", flush=True)
+    from transformers import AutoModel
+    from huggingface_hub import get_token
+    repo = "facebook/dinov3-vits16-pretrain-lvd1689m"
+    model = AutoModel.from_pretrained(repo, token=get_token()).eval().to(DEVICE)
+
+    class _Pooled(nn.Module):
+        def __init__(self, m):
+            super().__init__()
+            self.m = m
+
+        def forward(self, x):
+            return self.m(x).pooler_output  # (B, 384) CLS-based feature
+
+    feats, labs = extract(_Pooled(model), 224)
+    print(f"  features {feats.shape}", flush=True)
+    plot(feats, labs, OUT / "dinov3.png")
+
+
 def main() -> None:
     prepare_cifar_subset()
     for m in CONFIG:
