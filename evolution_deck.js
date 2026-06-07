@@ -51,7 +51,7 @@ const NOTES = {
     "把「拉近/推開」寫成數學 = InfoNCE",
     "看三個位置:分子=正樣本(要大)、分母=負樣本(要小)、τ=溫度",
     "記憶點:分子拉、分母推",
-    "之後 14 個方法都在玩這條式子(變形或逃脫)"),
+    "這條式由 CPC 提出;之後幾乎所有方法都在玩它(變形或逃脫)"),
   evoMap: B(
     "一張地圖、四個時代,照著走",
     "箭頭 = 「誰解決誰的瓶頸」,不只是時間順序",
@@ -60,6 +60,18 @@ const NOTES = {
     "回到 2018:一堆圖、沒標籤,模型要學什麼?",
     "標籤是最大那根拐杖,現在被抽掉",
     "第一幕:看前人怎麼「無中生有」造出任務"),
+  cpc: B(
+    "新名詞:CPC=在潛在空間預測未來;InfoNCE=這篇命名的那條對比 loss",
+    "架構:編碼器 f_enc 出潛向量 → 自回歸 g_ar(GRU)摘成 context c_t → 用 c_t 預測未來潛向量",
+    "loss:InfoNCE,1 正 N−1 負;f 學的是密度比,最小化它=拉高互資訊下界 I≥log N−L",
+    "跟後面方法的差異:它是「用過去預測未來」,不是「比兩張增強圖」;後面的人把 g_ar 丟掉,改用增強定義正樣本",
+    "它是全場開山祖:開場那條 InfoNCE 就是這篇取的名"),
+  cmc: B(
+    "點子:把「同圖兩增強」升級成「同場景的不同視角／通道」,學跨視角共享的語意",
+    "架構:每個視角各一個編碼器(如 Lab 拆 L 亮度+ab 色度);loss:跨視角 InfoNCE,等於拉高 I(zᵢ;zⱼ) 的下界",
+    "沿用 Instance Discrimination 的 memory bank + NCE(τ=0.07、16384 負樣本)抽負樣本",
+    "跟前作差異:正樣本改成「不同通道」而非「同圖增強」;N 視角用 core-view 或 full-graph,視角越多越好",
+    "它是 CPC 的推廣,也是同一作者後續 InfoMin 的前身"),
   instance_discrimination: B(
     "點子:每張圖自成一類(百萬張 = 百萬類)",
     "架構:一個編碼器 + memory bank(存全資料特徵當負樣本)",
@@ -149,7 +161,7 @@ const NOTES = {
     "回扣開場伏筆:最怕的就是坍塌",
     "看表:每代「用不用負樣本 + 靠什麼防坍塌」全列出",
     "機制各不同(負樣本 / Sinkhorn / EMA / stop-grad / 去冗餘 / centering)",
-    "punchline:14 個方法都在回答同一句——沒標籤怎麼不坍塌"),
+    "punchline:這些方法都在回答同一句——沒標籤怎麼不坍塌"),
   prog1: B(
     "理論講完看實跑:2×H100、CIFAR-10、200 epoch、每 epoch 拍 UMAP",
     "Era 1–2 四個:epoch 0 一坨(坍塌起點)→ 逐漸分群",
@@ -482,7 +494,7 @@ const A4 = (chip) => ({ chip, color: E4 });
     s.addText(c.d, { x: x + 0.3, y: cy0 + 0.6, w: cw - 0.5, h: 0.85, fontFace: FACE, fontSize: 12.5, color: MUTE, margin: 0, lineSpacingMultiple: 1.05 });
   });
   s.addText([
-    { text: "接下來 14 種方法，全是這條式的 ", options: {} },
+    { text: "這條式最早由 CPC 提出——之後幾乎每個方法，都是它的 ", options: {} },
     { text: "「變形」", options: { bold: true, color: "0E7490" } },
     { text: " 或對它的 ", options: {} },
     { text: "「逃脫」", options: { bold: true, color: E3 } },
@@ -501,7 +513,7 @@ const A4 = (chip) => ({ chip, color: E4 });
   s.addText("時間 →　每一代都在解決前一代的瓶頸", { x: 0.9, y: 1.18, w: 11.5, h: 0.4, fontFace: FACE, fontSize: 14, color: ICE, margin: 0 });
 
   const cols = [
-    { yr: "2018–19", c: E1, head: "Era 1 · 代理任務", ms: ["Instance\nDiscrimination", "Invariant\nSpread", "memory bank\n+ NCE"] },
+    { yr: "2018–19", c: E1, head: "Era 1 · 代理任務", ms: ["CPC", "CMC", "Instance\nDiscrimination", "Invariant\nSpread"] },
     { yr: "2020", c: E2, head: "Era 2 · 對比 / 分群", ms: ["MoCo v1 / v2", "SimCLR v1 / v2", "SwAV · InfoMin"] },
     { yr: "2020–21", c: E3, head: "Era 3 · 無負樣本", ms: ["BYOL", "SimSiam", "Barlow Twins"] },
     { yr: "2021+", c: E4, head: "Era 4 · Transformer", ms: ["MoCo v3", "DINO", "DINOv2"] },
@@ -513,13 +525,18 @@ const A4 = (chip) => ({ chip, color: E4 });
     s.addText(col.yr, { x: x + 0.15, y: y0 + 0.08, w: cw - 0.3, h: 0.44, fontFace: MONO, fontSize: 15, bold: true, color: NAVY, margin: 0, valign: "middle" });
     s.addShape(pres.shapes.RECTANGLE, { x, y: y0 + 0.6, w: cw, h: ch - 0.6, fill: { color: NAVY2 }, line: { color: col.c, width: 1.5 } });
     s.addText(col.head, { x: x + 0.2, y: y0 + 0.75, w: cw - 0.4, h: 0.55, fontFace: FACE, fontSize: 14.5, bold: true, color: col.c, margin: 0 });
+    // auto-shrink boxes so a fuller column (e.g. Era 1 with CPC+CMC) still fits the panel
+    const nat = col.ms.map((m) => (m.split("\n").length > 1 ? 0.78 : 0.55));
+    const gapB = 0.18;
+    const availB = ch - 1.4 - 0.05;
+    const totalB = nat.reduce((a, b) => a + b, 0) + (nat.length - 1) * gapB;
+    const sc = totalB > availB ? availB / totalB : 1;
     let yy = y0 + 1.4;
-    col.ms.forEach((m) => {
-      const lines = m.split("\n").length;
-      const mh = lines > 1 ? 0.78 : 0.55;
+    col.ms.forEach((m, mi) => {
+      const mh = nat[mi] * sc;
       s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x + 0.2, y: yy, w: cw - 0.4, h: mh, rectRadius: 0.06, fill: { color: NAVY3 } });
       s.addText(m.replace("\n", " "), { x: x + 0.32, y: yy, w: cw - 0.6, h: mh, valign: "middle", fontFace: FACE, fontSize: 13, bold: true, color: WHITE, margin: 0 });
-      yy += mh + 0.18;
+      yy += mh + gapB * sc;
     });
     if (i < cols.length - 1) {
       s.addText("→", { x: x + cw - 0.04, y: y0 + 1.8, w: cg + 0.08, h: 0.6, align: "center", valign: "middle", fontFace: FACE, fontSize: 24, bold: true, color: ACCENT, margin: 0 });
@@ -534,6 +551,43 @@ const A4 = (chip) => ({ chip, color: E4 });
 // ACT 1
 // ============================================================
 actDivider("1", E1, "2018 – 2019", "起點：沒有標籤，\n要怎麼定義「任務」？", NOTES.act1);
+
+// --- CPC (InfoNCE 的源頭) ---
+methodSlide({
+  era: A1("ERA 1 · 2018"), name: "CPC（Contrastive Predictive Coding）", demo: "demo_assets/gifs/cpc.gif", venue: "arXiv 2018",
+  authors: "A. van den Oord, Y. Li, O. Vinyals — Representation Learning with Contrastive Predictive Coding",
+  idea: "不重建畫面，改在「潛在空間預測未來」——逼特徵留住慢變、共享的語意。",
+  mechanism: ["編碼器 f_enc 把每格輸入壓成潛向量 z_t", "自回歸 g_ar（GRU）把過去摘要成 context c_t", "用 c_t 在 N 個候選裡挑出真正的未來 z_{t+k}"],
+  contribution: "首創 CPC，並命名 InfoNCE——給了全場那條 loss。",
+  diagram: (s, o) => {
+    const midY = o.y + o.h / 2;
+    let x = o.x;
+    abox(s, x, midY - 0.32, 1.2, 0.64, "輸入序列\nx₁ … x_t", NAVY3, WHITE); x += 1.2;
+    hArrow(s, x, midY, 0.45); x += 0.45;
+    abox(s, x, midY - 0.3, 1.3, 0.6, "編碼器\nf_enc", BOXF, INK, BOXB); x += 1.3;
+    hArrow(s, x, midY, 0.45); x += 0.45;
+    abox(s, x, midY - 0.3, 1.6, 0.6, "自回歸 g_ar\n(GRU) → c_t", BOXF, INK, BOXB); x += 1.6;
+    hArrow(s, x, midY, 0.5); x += 0.5;
+    const lx = x;
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: lx, y: midY - 0.32, w: 1.5, h: 0.64, rectRadius: 0.08, fill: { color: NAVY }, shadow: makeShadow() });
+    s.addText("InfoNCE", { x: lx, y: midY - 0.32, w: 1.5, h: 0.64, align: "center", valign: "middle", fontFace: FACE, fontSize: 11, bold: true, color: ACCENT, margin: 0 });
+    const exx = lx + 1.5 + 0.55;
+    abox(s, exx, midY - 0.32, 1.85, 0.64, "預測未來\n潛向量 z₊ₖ", E2, NAVY);
+    s.addShape(pres.shapes.LINE, { x: lx + 1.5, y: midY, w: 0.55, h: 0, line: { color: "90A0C0", width: 1.5, endArrowType: "triangle" } });
+  },
+  loss: "−log  f(z₊,c) / Σⱼ f(z_j,c)", lossNote: "InfoNCE（本篇命名）；f=exp(zᵀWc) 密度比 → MI 下界",
+});
+
+// --- CMC (多視角) ---
+methodSlide({
+  era: A1("ERA 1 · 2019"), name: "CMC（Contrastive Multiview Coding）", demo: "demo_assets/gifs/cmc.gif", venue: "arXiv 2019",
+  authors: "Y. Tian, D. Krishnan, P. Isola — Contrastive Multiview Coding",
+  idea: "正樣本不只是「同圖的兩個增強」，而是「同場景的不同視角／通道」，學跨視角共享的語意。",
+  mechanism: ["每個視角各一個編碼器（如 Lab 拆成 L 亮度、ab 色度兩支）", "沿用 Instance Discrimination 的 memory bank + NCE（τ=0.07、16384 負樣本）", "N 個視角：core-view（單錨）或 full-graph（兩兩配對）；視角越多越好"],
+  contribution: "把 CPC 的「預測未來」推廣到任意視角集合；對比贏過跨視角重建。",
+  diagram: (s, o) => siamese(s, o, { top: "編碼器\nf_L", bot: "編碼器\nf_ab", botNote: "L／ab 兩通道", proj: false, loss: "NCE", extra: "Memory\nBank" }),
+  loss: "L = −log h(v₁,v₂⁺) / Σⱼ h(v₁,v₂ʲ)", lossNote: "跨視角 InfoNCE；h=exp(cos/τ)，I(zᵢ;zⱼ)≥log k−L",
+});
 
 // --- Instance Discrimination ---
 methodSlide({
@@ -722,6 +776,7 @@ methodSlide({
   const hdr = (t) => ({ text: t, options: { fill: { color: NAVY }, color: WHITE, bold: true, fontFace: FACE, fontSize: 14, align: "center", valign: "middle" } });
   const rows = [
     [hdr("時代"), hdr("代表方法"), hdr("用負樣本？"), hdr("防坍塌機制")],
+    ["Era 1 · 2018–19", "CPC · CMC", { text: "是（InfoNCE / bank）", options: { color: "2A8F5F" } }, "預測未來 / 多視角，用負樣本推開"],
     ["Era 1 · 2018", "Instance Discrimination", { text: "是（memory bank）", options: { color: "2A8F5F" } }, "用大量負樣本把表徵推開"],
     ["Era 2 · 2020", "MoCo / SimCLR", { text: "是（queue / batch）", options: { color: "2A8F5F" } }, "in-batch / queue 負樣本"],
     ["Era 2 · 2020", "SwAV", { text: "否（用 prototype）", options: { color: E3, bold: true } }, "線上分群 + Sinkhorn 均勻分配"],
@@ -731,15 +786,15 @@ methodSlide({
   ];
   s.addTable(rows, {
     x: 0.7, y: 2.3, w: 11.93, colW: [2.1, 3.5, 2.73, 3.6],
-    rowH: [0.5, 0.52, 0.52, 0.52, 0.52, 0.52, 0.52],
+    rowH: [0.46, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45],
     border: { pt: 0.5, color: "D5DCEA" }, align: "left", valign: "middle",
     fontFace: FACE, fontSize: 13, color: INK, margin: [0, 0.12, 0, 0.12],
     fill: { color: CARD },
   });
   s.addText([
-    { text: "Punchline：14 個方法，其實都在回答同一個問題 —— ", options: { color: INK } },
+    { text: "Punchline：這一路的方法，其實都在回答同一個問題 —— ", options: { color: INK } },
     { text: "「沒有標籤，怎麼不讓表徵坍塌？」", options: { bold: true, color: "0E7490" } },
-  ], { x: 0.7, y: 6.35, w: 11.9, h: 0.5, align: "center", fontFace: FACE, fontSize: 15, italic: true, margin: 0 });
+  ], { x: 0.7, y: 6.55, w: 11.9, h: 0.5, align: "center", fontFace: FACE, fontSize: 15, italic: true, margin: 0 });
   s.addNotes(NOTES.collapseTable);
 }
 

@@ -52,7 +52,7 @@ const NOTES = {
     "Write pull/push as math = InfoNCE",
     "Three spots: numerator = positives (large), denominator = negatives (small), tau = temperature",
     "Hook: numerator pulls, denominator pushes",
-    "All 14 methods are variations on (or escapes from) this one equation"),
+    "InfoNCE was coined by CPC; nearly every method after is a variation on (or escape from) it"),
   evoMap: B(
     "One map, four eras — we follow it",
     "Arrows = who solved whose bottleneck, not just chronology",
@@ -61,6 +61,18 @@ const NOTES = {
     "Back to 2018: piles of images, no labels — what is the model to learn?",
     "Labels were the biggest crutch, now pulled away",
     "Act 1: how people conjured a task out of thin air"),
+  cpc: B(
+    "New terms: CPC = predict the future in latent space; InfoNCE = the contrastive loss this paper named",
+    "Architecture: encoder f_enc → latents z; autoregressive g_ar (GRU) → context c_t; use c_t to predict future latents",
+    "Loss: InfoNCE, 1 positive vs N−1 negatives; f learns a density ratio, so minimizing it raises the MI bound I≥log N−L",
+    "Difference from later methods: it predicts the future from context, not 'compare two augmented views'; later methods drop g_ar and define positives via augmentation",
+    "It's the field's origin: the opening InfoNCE slide is the loss this paper named"),
+  cmc: B(
+    "Idea: upgrade 'two augmentations of one image' to 'different views / channels of the same scene', learn the shared semantics",
+    "Arch: one encoder per view (e.g. split Lab into L-luminance + ab-chrominance); loss: cross-view InfoNCE = raising a lower bound on I(zᵢ;zⱼ)",
+    "Reuses Instance Discrimination's memory bank + NCE (τ=0.07, 16384 negatives) to draw negatives",
+    "Diff from neighbor: the positive is now a different channel, not an augmentation; for N views use core-view or full-graph, and more views help",
+    "It generalizes CPC and is the precursor to the same author's later InfoMin"),
   instance_discrimination: B(
     "Idea: every image is its own class (a million images = a million classes)",
     "Architecture: one encoder + a memory bank (stores all features as negatives)",
@@ -150,7 +162,7 @@ const NOTES = {
     "Callback to the opening seed: collapse is the real fear",
     "Table: per era, do they use negatives + what prevents collapse",
     "Mechanisms all differ (negatives / Sinkhorn / EMA / stop-grad / decorrelation / centering)",
-    "Punchline: all 14 answer one question — without labels, how to avoid collapse"),
+    "Punchline: all these methods answer one question — without labels, how to avoid collapse"),
   prog1: B(
     "From theory to real runs: 2xH100, CIFAR-10, 200 epochs, a UMAP per epoch",
     "Era 1–2 four: epoch 0 is one blob (collapse start) → gradually clusters",
@@ -481,7 +493,7 @@ const A4 = (chip) => ({ chip, color: E4 });
     s.addText(c.d, { x: x + 0.3, y: cy0 + 0.6, w: cw - 0.5, h: 0.85, fontFace: FACE, fontSize: 11.5, color: MUTE, margin: 0, lineSpacingMultiple: 1.05 });
   });
   s.addText([
-    { text: "The next 14 methods are all either a ", options: {} },
+    { text: "InfoNCE was coined by CPC — almost every method after is either a ", options: {} },
     { text: "variation", options: { bold: true, color: "0E7490" } },
     { text: " on this equation, or an ", options: {} },
     { text: "escape", options: { bold: true, color: E3 } },
@@ -500,7 +512,7 @@ const A4 = (chip) => ({ chip, color: E4 });
   s.addText("Time →   each generation solves the previous one's bottleneck", { x: 0.9, y: 1.18, w: 11.5, h: 0.4, fontFace: FACE, fontSize: 14, color: ICE, margin: 0 });
 
   const cols = [
-    { yr: "2018–19", c: E1, head: "Era 1 · Proxy task", ms: ["Instance\nDiscrimination", "Invariant\nSpread", "memory bank\n+ NCE"] },
+    { yr: "2018–19", c: E1, head: "Era 1 · Proxy task", ms: ["CPC", "CMC", "Instance\nDiscrimination", "Invariant\nSpread"] },
     { yr: "2020", c: E2, head: "Era 2 · Contrastive / Clustering", ms: ["MoCo v1 / v2", "SimCLR v1 / v2", "SwAV · InfoMin"] },
     { yr: "2020–21", c: E3, head: "Era 3 · No negatives", ms: ["BYOL", "SimSiam", "Barlow Twins"] },
     { yr: "2021+", c: E4, head: "Era 4 · Transformer", ms: ["MoCo v3", "DINO", "DINOv2"] },
@@ -512,13 +524,18 @@ const A4 = (chip) => ({ chip, color: E4 });
     s.addText(col.yr, { x: x + 0.15, y: y0 + 0.08, w: cw - 0.3, h: 0.44, fontFace: MONO, fontSize: 15, bold: true, color: NAVY, margin: 0, valign: "middle" });
     s.addShape(pres.shapes.RECTANGLE, { x, y: y0 + 0.6, w: cw, h: ch - 0.6, fill: { color: NAVY2 }, line: { color: col.c, width: 1.5 } });
     s.addText(col.head, { x: x + 0.2, y: y0 + 0.75, w: cw - 0.4, h: 0.55, fontFace: FACE, fontSize: 13.5, bold: true, color: col.c, margin: 0 });
+    // auto-shrink boxes so a fuller column (e.g. Era 1 with CPC+CMC) still fits the panel
+    const nat = col.ms.map((m) => (m.split("\n").length > 1 ? 0.78 : 0.55));
+    const gapB = 0.18;
+    const availB = ch - 1.4 - 0.05;
+    const totalB = nat.reduce((a, b) => a + b, 0) + (nat.length - 1) * gapB;
+    const sc = totalB > availB ? availB / totalB : 1;
     let yy = y0 + 1.4;
-    col.ms.forEach((m) => {
-      const lines = m.split("\n").length;
-      const mh = lines > 1 ? 0.78 : 0.55;
+    col.ms.forEach((m, mi) => {
+      const mh = nat[mi] * sc;
       s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x + 0.2, y: yy, w: cw - 0.4, h: mh, rectRadius: 0.06, fill: { color: NAVY3 } });
       s.addText(m.replace("\n", " "), { x: x + 0.32, y: yy, w: cw - 0.6, h: mh, valign: "middle", fontFace: FACE, fontSize: 12.5, bold: true, color: WHITE, margin: 0 });
-      yy += mh + 0.18;
+      yy += mh + gapB * sc;
     });
     if (i < cols.length - 1) {
       s.addText("→", { x: x + cw - 0.04, y: y0 + 1.8, w: cg + 0.08, h: 0.6, align: "center", valign: "middle", fontFace: FACE, fontSize: 24, bold: true, color: ACCENT, margin: 0 });
@@ -533,6 +550,43 @@ const A4 = (chip) => ({ chip, color: E4 });
 // ACT 1
 // ============================================================
 actDivider("1", E1, "2018 – 2019", "The start: with no labels,\nhow do we even define a task?", NOTES.act1);
+
+// --- CPC (the origin of InfoNCE) ---
+methodSlide({
+  era: A1("ERA 1 · 2018"), name: "CPC (Contrastive Predictive Coding)", demo: "demo_assets/gifs/cpc.gif", venue: "arXiv 2018",
+  authors: "A. van den Oord, Y. Li, O. Vinyals — Representation Learning with Contrastive Predictive Coding",
+  idea: "Don't reconstruct pixels — predict the FUTURE in latent space, forcing features to keep the slow, shared semantics.",
+  mechanism: ["Encoder f_enc maps each input step to a latent z_t", "Autoregressive g_ar (GRU) summarizes the past into a context c_t", "Use c_t to pick the true future z_{t+k} out of N candidates"],
+  contribution: "Introduced CPC and coined InfoNCE — it gave the whole field its loss.",
+  diagram: (s, o) => {
+    const midY = o.y + o.h / 2;
+    let x = o.x;
+    abox(s, x, midY - 0.32, 1.2, 0.64, "Input seq\nx₁ … x_t", NAVY3, WHITE); x += 1.2;
+    hArrow(s, x, midY, 0.45); x += 0.45;
+    abox(s, x, midY - 0.3, 1.3, 0.6, "Encoder\nf_enc", BOXF, INK, BOXB); x += 1.3;
+    hArrow(s, x, midY, 0.45); x += 0.45;
+    abox(s, x, midY - 0.3, 1.6, 0.6, "Autoreg g_ar\n(GRU) → c_t", BOXF, INK, BOXB); x += 1.6;
+    hArrow(s, x, midY, 0.5); x += 0.5;
+    const lx = x;
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: lx, y: midY - 0.32, w: 1.5, h: 0.64, rectRadius: 0.08, fill: { color: NAVY }, shadow: makeShadow() });
+    s.addText("InfoNCE", { x: lx, y: midY - 0.32, w: 1.5, h: 0.64, align: "center", valign: "middle", fontFace: FACE, fontSize: 11, bold: true, color: ACCENT, margin: 0 });
+    const exx = lx + 1.5 + 0.55;
+    abox(s, exx, midY - 0.32, 1.85, 0.64, "Predict future\nlatent z₊ₖ", E2, NAVY);
+    s.addShape(pres.shapes.LINE, { x: lx + 1.5, y: midY, w: 0.55, h: 0, line: { color: "90A0C0", width: 1.5, endArrowType: "triangle" } });
+  },
+  loss: "−log  f(z₊,c) / Σⱼ f(z_j,c)", lossNote: "InfoNCE (named here); f=exp(zᵀWc) density ratio → MI bound",
+});
+
+// --- CMC (multiview) ---
+methodSlide({
+  era: A1("ERA 1 · 2019"), name: "CMC (Contrastive Multiview Coding)", demo: "demo_assets/gifs/cmc.gif", venue: "arXiv 2019",
+  authors: "Y. Tian, D. Krishnan, P. Isola — Contrastive Multiview Coding",
+  idea: "Positives aren't just two augmentations of one image — they're different views / channels of the same scene; learn what they share.",
+  mechanism: ["One encoder per view (e.g. split Lab into an L-luminance and an ab-chrominance branch)", "Reuses Instance Discrimination's memory bank + NCE (τ=0.07, 16384 negatives)", "N views: core-view (one anchor) or full-graph (all pairs); more views help"],
+  contribution: "Generalizes CPC's 'predict the future' to arbitrary view sets; contrastive beats cross-view reconstruction.",
+  diagram: (s, o) => siamese(s, o, { top: "Encoder\nf_L", bot: "Encoder\nf_ab", botNote: "L / ab channels", proj: false, loss: "NCE", extra: "Memory\nBank" }),
+  loss: "L = −log h(v₁,v₂⁺) / Σⱼ h(v₁,v₂ʲ)", lossNote: "Cross-view InfoNCE; h=exp(cos/τ), I(zᵢ;zⱼ)≥log k−L",
+});
 
 // --- Instance Discrimination ---
 methodSlide({
@@ -721,6 +775,7 @@ methodSlide({
   const hdr = (t) => ({ text: t, options: { fill: { color: NAVY }, color: WHITE, bold: true, fontFace: FACE, fontSize: 13.5, align: "center", valign: "middle" } });
   const rows = [
     [hdr("Era"), hdr("Representative"), hdr("Negatives?"), hdr("Anti-collapse mechanism")],
+    ["Era 1 · 2018–19", "CPC · CMC", { text: "Yes (InfoNCE / bank)", options: { color: "2A8F5F" } }, "Predict-future / multiview, push apart with negatives"],
     ["Era 1 · 2018", "Instance Discrimination", { text: "Yes (memory bank)", options: { color: "2A8F5F" } }, "Push representations apart with many negatives"],
     ["Era 2 · 2020", "MoCo / SimCLR", { text: "Yes (queue / batch)", options: { color: "2A8F5F" } }, "In-batch / queue negatives"],
     ["Era 2 · 2020", "SwAV", { text: "No (uses prototypes)", options: { color: E3, bold: true } }, "Online clustering + Sinkhorn even assignment"],
@@ -730,15 +785,15 @@ methodSlide({
   ];
   s.addTable(rows, {
     x: 0.7, y: 2.3, w: 11.93, colW: [2.1, 3.5, 2.73, 3.6],
-    rowH: [0.5, 0.52, 0.52, 0.52, 0.52, 0.52, 0.52],
+    rowH: [0.46, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45],
     border: { pt: 0.5, color: "D5DCEA" }, align: "left", valign: "middle",
     fontFace: FACE, fontSize: 12.5, color: INK, margin: [0, 0.12, 0, 0.12],
     fill: { color: CARD },
   });
   s.addText([
-    { text: "Punchline: all 14 methods are really answering one question — ", options: { color: INK } },
+    { text: "Punchline: all these methods are really answering one question — ", options: { color: INK } },
     { text: "'Without labels, how do we keep representations from collapsing?'", options: { bold: true, color: "0E7490" } },
-  ], { x: 0.7, y: 6.35, w: 11.9, h: 0.5, align: "center", fontFace: FACE, fontSize: 14.5, italic: true, margin: 0 });
+  ], { x: 0.7, y: 6.55, w: 11.9, h: 0.5, align: "center", fontFace: FACE, fontSize: 14.5, italic: true, margin: 0 });
   s.addNotes(NOTES.collapseTable);
 }
 
